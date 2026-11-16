@@ -79,7 +79,9 @@ private val CreatorColors = darkColorScheme(
     val onBackup: (Project) -> Unit = { project -> backupId = project.id; backup.launch("${safeName(project.title)}.creator.zip") }
     BackHandler(state.destination != Destination.LIBRARY && state.destination != Destination.RECORDER) { model.navigate(Destination.LIBRARY) }
     LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(it); model.clearMessage() } }
-    Scaffold(
+    if (state.destination == Destination.RECORDER) {
+        state.project?.let { RecorderScreen(it, state.busy, model, state.error) }
+    } else Scaffold(
         topBar = {
             TopAppBar(
                 title = { Column { Text(if (state.destination == Destination.LIBRARY) "Creator" else state.project?.title ?: "Creator", maxLines = 1); if (state.destination == Destination.LIBRARY) Text("I tuoi video, sul tuo dispositivo", style = MaterialTheme.typography.labelMedium) } },
@@ -111,7 +113,7 @@ private val CreatorColors = darkColorScheme(
             }
         }
     }
-    state.error?.let { message -> AlertDialog(onDismissRequest = model::clearError, title = { Text("Operazione non completata") }, text = { Text(message) }, confirmButton = { TextButton(onClick = model::clearError) { Text("Ho capito") } }) }
+    if (state.destination != Destination.RECORDER) state.error?.let { message -> AlertDialog(onDismissRequest = model::clearError, title = { Text("Operazione non completata") }, text = { Text(message) }, confirmButton = { TextButton(onClick = model::clearError) { Text("Ho capito") } }) }
     rename?.let { project -> NameDialog("Rinomina progetto", project.title, onDismiss = { rename = null }) { model.rename(project.id, it); rename = null } }
     confirmTrash?.let { project -> AlertDialog(onDismissRequest = { confirmTrash = null }, title = { Text("Sposta nel cestino?") }, text = { Text("“${project.title}” conserverà originali e cronologia. Potrai ripristinarlo dal cestino.") }, confirmButton = { TextButton(onClick = { model.trash(project.id); confirmTrash = null }, modifier = Modifier.testTag("confirm_trash")) { Text("Sposta nel cestino") } }, dismissButton = { TextButton(onClick = { confirmTrash = null }) { Text("Annulla") } }) }
     if (showAbout) AboutDialog { showAbout = false }

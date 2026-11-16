@@ -130,7 +130,11 @@ class RecorderWorkflowTest {
         compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("back").assertIsDisplayed(); true }.getOrDefault(false) }
     }
     private fun idle() { compose.waitUntil(15_000) { compose.onAllNodesWithTag("operation_progress").fetchSemanticsNodes().isEmpty() }; compose.waitForIdle() }
-    private fun click(tag: String) { compose.clickVisibleControl(tag, InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density); idle() }
+    private fun click(tag: String) {
+        if (tag == "export") compose.clickVisibleControl(tag, InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density)
+        else { val node = compose.onNodeWithTag(tag); assertTrue("$tag must be entirely visible", node.fullyVisible(InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density)); node.assertIsEnabled().performTouchInput { click() } }
+        idle()
+    }
     private fun trackReport(file: File): JSONArray {
         val extractor = MediaExtractor()
         return try {

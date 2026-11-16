@@ -51,7 +51,6 @@ class RecorderLayoutTest {
                 val id = app.repository.listProjects().first { it.title == title }.id
                 projectId = id
                 waitForCamera(scenario)
-                click("recorder_controls_toggle")
                 click("switch_camera")
                 waitForCamera(scenario)
                 compose.onNodeWithTag("switch_camera").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Fotocamera frontale"))
@@ -67,7 +66,7 @@ class RecorderLayoutTest {
                 shell("screencap -p /sdcard/Download/creator-front-after-rotation.png")
 
                 click("record_toggle")
-                compose.waitUntil(10_000) { compose.onAllNodesWithText("Pausa e salva").fetchSemanticsNodes().size == 1 }
+                compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("Pausa e salva").fetchSemanticsNodes().size == 1 }
                 waitForRecordedFrames()
                 shell("screencap -p /sdcard/Download/creator-front-recording-before-rotation.png")
                 // Recreate the real activity during REC: this must finalize once, never restart.
@@ -85,14 +84,12 @@ class RecorderLayoutTest {
                 val firstHash = hash(firstFile)
                 assertTrue(firstSource.durationUs >= 500_000)
                 requireNotNull(MediaProbe.thumbnail(firstFile)).recycle()
-                if (compose.onAllNodesWithTag("switch_camera").fetchSemanticsNodes().isEmpty()) click("recorder_controls_toggle")
                 compose.onNodeWithTag("switch_camera").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Fotocamera frontale"))
                 shell("screencap -p /sdcard/Download/creator-front-stopped-after-rotation.png")
-                click("recorder_controls_toggle")
                 assertTrue(app.repository.pendingMediaFiles(id).isEmpty())
 
                 click("record_toggle")
-                compose.waitUntil(10_000) { compose.onAllNodesWithText("Pausa e salva").fetchSemanticsNodes().size == 1 }
+                compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("Pausa e salva").fetchSemanticsNodes().size == 1 }
                 waitForRecordedFrames()
                 // Keep the rendered button enabled across both real input events. The command
                 // boundary must read live state even before the next Compose frame disables it.
@@ -130,6 +127,8 @@ class RecorderLayoutTest {
         }
     }
 
+    // Requested orientation stresses window layout/lifecycle. It does not rotate emulator sensors.
+    // Physical-pose evidence is collected separately with host sensor/display alignment.
     @Test fun captureAndWholeFitPreviewStayVisibleAtSamsungSizeAfterRotationAndLargeText() {
         val previousSize = Regex("Override size: (\\d+x\\d+)").find(shell("wm size"))?.groupValues?.get(1)
         val previousDensity = Regex("Override density: (\\d+)").find(shell("wm density"))?.groupValues?.get(1)
@@ -149,35 +148,44 @@ class RecorderLayoutTest {
             compose.waitUntil(10_000) { app.repository.listProjects().any { it.title == title } }
             projectId = app.repository.listProjects().first { it.title == title }.id
 
+            var savedCount = 0
             for (fontScale in listOf(1f, 1.5f)) {
                 shell("settings put system font_scale $fontScale")
                 for (portrait in listOf(true, false)) {
                     scenario.onActivity { it.requestedOrientation = if (portrait) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
                     waitForConfiguration(scenario, portrait, fontScale)
                     waitForCamera(scenario)
-                    val label = "${if (portrait) "portrait" else "landscape"}-${(fontScale * 100).toInt()}"
+                    val label = "${if (portrait) "portrait" else "window-landscape"}-${(fontScale * 100).toInt()}"
                     // Capture before asserting so a missing primary control leaves useful evidence.
                     shell("screencap -p /sdcard/Download/creator-recorder-$label.png")
                     assertCaptureAndPreviewVisible(scenario)
-                    if (portrait) {
-                        click("recorder_controls_toggle")
-                        compose.onNodeWithTag("recorder_tools").assertIsDisplayed()
+                    val beforeZoom = compose.onNodeWithTag("camera_preview").fetchSemanticsNode().boundsInRoot
+                    val zoom = compose.onNodeWithTag("zoom_toggle")
+                    if (zoom.fetchSemanticsNode().config.contains(SemanticsProperties.Disabled)) {
+                        zoom.assertIsNotEnabled()
+                        compose.onNodeWithTag("camera_zoom").assertDoesNotExist()
+                    } else {
+                        click("zoom_toggle")
+                        compose.onNodeWithTag("camera_zoom").assertIsDisplayed()
+                        assertEquals(beforeZoom, compose.onNodeWithTag("camera_preview").fetchSemanticsNode().boundsInRoot)
                         assertCaptureAndPreviewVisible(scenario)
-                        shell("screencap -p /sdcard/Download/creator-recorder-$label-controls.png")
-                        click("recorder_controls_toggle")
-                    } else compose.onNodeWithText("Controlli fotocamera").assertIsDisplayed()
+                        shell("screencap -p /sdcard/Download/creator-recorder-$label-zoom.png")
+                        click("zoom_toggle")
+                    }
+                    click("record_toggle")
+                    compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("Pausa e salva").fetchSemanticsNodes().size == 1 }
+                    waitForRecordedFrames()
+                    assertCaptureAndPreviewVisible(scenario)
+                    shell("screencap -p /sdcard/Download/creator-recorder-$label-recording.png")
+                    click("record_toggle")
+                    savedCount++
+                    val expected = savedCount
+                    compose.waitUntil(20_000) { app.repository.load(requireNotNull(projectId)).clips.size == expected }
+                    compose.waitUntil(10_000) { compose.onNodeWithTag("record_status").fetchSemanticsNode().config[SemanticsProperties.Text].any { it.text.startsWith("Pronto") } }
                 }
             }
 
-            // The most constrained state must also receive real REC/Pausa taps.
-            click("record_toggle")
-            compose.waitUntil(10_000) { compose.onAllNodesWithText("Pausa e salva").fetchSemanticsNodes().size == 1 }
-            assertCaptureAndPreviewVisible(scenario)
-            shell("screencap -p /sdcard/Download/creator-recorder-landscape-150-recording.png")
-            click("record_toggle")
-            val id = requireNotNull(projectId)
-            compose.waitUntil(20_000) { app.repository.load(id).clips.size == 1 }
-            compose.waitUntil(10_000) { compose.onNodeWithTag("record_status").fetchSemanticsNode().config[SemanticsProperties.Text].any { it.text.startsWith("Pronto") } }
+            assertEquals(4, app.repository.load(requireNotNull(projectId)).captureLedger.size)
             click("leave_recorder")
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("back").assertIsDisplayed(); true }.getOrDefault(false) }
             compose.onNodeWithTag("clip_0").assertExists()
@@ -221,7 +229,10 @@ class RecorderLayoutTest {
         val preview = compose.onNodeWithTag("camera_preview").fetchSemanticsNode().boundsInRoot
         val capture = compose.onNodeWithTag("capture_controls").fetchSemanticsNode().boundsInRoot
         assertTrue("Preview needs a positive bounded viewport", preview.width > 0 && preview.height > 0)
-        assertFalse("Fixed capture controls cannot cover the preview", preview.overlaps(capture))
+        val root = compose.onNodeWithTag("recorder_layout").fetchSemanticsNode().boundsInRoot
+        assertEquals("Native preview must occupy the whole recorder viewport", root, preview)
+        assertTrue("Capture controls must overlay the video", capture.overlaps(compose.onNodeWithTag("recorder_frame_overlay").fetchSemanticsNode().boundsInRoot))
+        assertTrue("Recorder cannot contain vertical scrollers", compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange), useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
         scenario.onActivity { activity -> assertEquals(PreviewView.ScaleType.FIT_CENTER, requireNotNull(findPreview(activity.window.decorView)).scaleType) }
     }
 
@@ -235,7 +246,7 @@ class RecorderLayoutTest {
         compose.waitUntil(15_000) { compose.onAllNodesWithTag("operation_progress").fetchSemanticsNodes().isEmpty() }
         compose.waitForIdle()
     }
-    private fun click(tag: String) { compose.clickVisibleControl(tag, app.resources.displayMetrics.density); idle() }
+    private fun click(tag: String) { val node = compose.onNodeWithTag(tag); assertTrue("$tag must be entirely visible", node.fullyVisible(app.resources.displayMetrics.density)); node.assertIsEnabled().performTouchInput { click() }; idle() }
     private fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command))
         .bufferedReader().use { it.readText() }
 }

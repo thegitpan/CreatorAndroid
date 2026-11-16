@@ -2,6 +2,8 @@
 
 Stato al 16 novembre 2026: **parziale, in attesa del ritorno del telefono**. Il Samsung è stato scollegato dopo aver autorizzato Debug USB. Conserva `Creator · test` precedente alle ultime correzioni, con la prima ripresa nel suo archivio separato; la nuova app personale `Creator` non è ancora installata. Le prove sintetiche sul telefono non sostituiscono le riprese reali. La regola deriva anche da [CAMERA-QA.md](../../docs/CAMERA-QA.md): «Synthetic simulator frames validate layout only».
 
+La candidata da verificare è ora **0.1.1/code 2**, con recorder a tutta schermata e comandi sovrapposti secondo [RECORDER-UX.md](RECORDER-UX.md). Prima di installarla, acquisire un nuovo backup e inventario: il telefono può contenere nuovi progetti o riprese creati dall'utente dopo lo scollegamento, assenti dal backup precedente. Aggiornare la stessa `Creator · test` e confrontare l'inventario dopo l'installazione.
+
 ## Evidenza già raccolta
 
 - Dispositivo effettivamente interrogato: Samsung **SM-S948B**, Android 17 / API 37, target dell'app 36, patch di sicurezza 5 ottobre 2026, pagine di memoria da 4 KiB. Nessun numero seriale o identificativo personale è pubblicato.

@@ -80,6 +80,8 @@ data class CameraUiState(
     val exposureLocked: Boolean = false,
     val focusLockPending: Boolean = false,
     val exposureLockPending: Boolean = false,
+    /** Display width / height of the negotiated preview crop, after its target rotation. */
+    val previewAspectRatio: Float? = null,
     val qualityLabel: String = "Richiesti 1080p · 30 fps · SDR",
 )
 
@@ -470,7 +472,7 @@ class CameraSession(context: Context) {
             finalizationScope.cancel()
         }
         previewView = null
-        mutableState.update { it.copy(ready = false) }
+        mutableState.update { it.copy(ready = false, previewAspectRatio = null) }
     }
 
     private fun unbindOwnedUseCases() {
@@ -487,7 +489,7 @@ class CameraSession(context: Context) {
             previous.cameraControl.cancelFocusAndMetering()
             runCatching { Camera2CameraControl.from(previous.cameraControl).clearCaptureRequestOptions() }
         }
-        mutableState.update { it.copy(canLockFocus = false, canLockExposure = false, focusLocked = false, exposureLocked = false, focusLockPending = false, exposureLockPending = false) }
+        mutableState.update { it.copy(canLockFocus = false, canLockExposure = false, focusLocked = false, exposureLocked = false, focusLockPending = false, exposureLockPending = false, previewAspectRatio = null) }
         val previousOwner = owner
         if (previous != null && previousOwner != null) {
             previous.cameraInfo.zoomState.removeObservers(previousOwner)
@@ -501,6 +503,17 @@ class CameraSession(context: Context) {
     }
 
     private fun updateQuality() {
+        // Preview and recording negotiate their own buffers. Overlay geometry follows Preview,
+        // never the requested recording quality or a parsed user-facing label.
+        val previewInfo = if (closed) null else preview?.resolutionInfo
+        val previewAspectRatio = previewInfo?.let { info ->
+            val width = info.cropRect.width()
+            val height = info.cropRect.height()
+            if (width <= 0 || height <= 0) null
+            else if (info.rotationDegrees == 90 || info.rotationDegrees == 270) height.toFloat() / width
+            else width.toFloat() / height
+        }
+        mutableState.update { it.copy(previewAspectRatio = previewAspectRatio) }
         val capture = capture ?: return
         val info = capture.resolutionInfo
         val quality = when (capture.selectedQuality) {

@@ -1,5 +1,7 @@
 # Verifiche della consegna personale 0.1.0
 
+Questo report conserva le prove della 0.1.0. Il successivo redesign del recorder 0.1.1, richiesto dall'utente sul riferimento Samsung Video Pro, è descritto in [RECORDER-UX.md](RECORDER-UX.md); sostituisce il precedente layout con controlli esterni all'anteprima.
+
 Data: 16 novembre 2026. Ambito: codice Android e correzioni successive alla prima implementazione `29d0f15`. Emulatori dedicati API 35/36 arm64, CI API 35 x86_64 e Samsung SM-S948B con Android 17 / API 37; JDK 17, Gradle 8.13, AGP 8.13.2, Kotlin 2.2.21, target SDK 36, CameraX 1.6.2 e Media3 1.11.1. Sul telefono i test automatici del motore usano soltanto campioni sintetici e un pacchetto isolato. La ripresa fisica e la sua accettazione sono descritte separatamente.
 
 ## Suite finale

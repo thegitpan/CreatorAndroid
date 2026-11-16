@@ -15,22 +15,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -40,14 +33,13 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import it.panebarco.creator.domain.Project
 import it.panebarco.creator.media.CameraSession
-import it.panebarco.creator.media.CameraUiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object ContextCompatPermission { fun missing(context: Context, permission: String) = ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED }
 
-@Composable fun RecorderScreen(project: Project, busy: Boolean, model: CreatorModel) {
+@Composable fun RecorderScreen(project: Project, busy: Boolean, model: CreatorModel, error: String? = null) {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -130,79 +122,19 @@ object ContextCompatPermission { fun missing(context: Context, permission: Strin
         silentChoice = !enabled
         if (enabled && !microphoneAllowed) permission.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
     }
-    val tools: @Composable (Modifier) -> Unit = { modifier ->
-        RecorderTools(
-            camera = camera, silent = silentChoice, microphoneAllowed = microphoneAllowed,
-            blocked = camera.recording || camera.starting || camera.finalizing || preparing,
-            onAudioToggle = audioToggle, onSilentChoice = { silentChoice = true },
-            onSettings = openSettings, onSwitchCamera = { session.switchCamera(); preferredFront = session.state.value.front },
-            onFocusLock = session::setFocusLocked, onExposureLock = session::setExposureLocked,
-            onZoom = session::setZoom, modifier = modifier,
-        )
-    }
-    val preview: @Composable (Modifier) -> Unit = { modifier ->
-        RecorderPreview(session, owner, preferredFront, cameraAllowed && cameraLease != null && !waitingForPreviousTake, !cameraAllowed, requestCamera, openSettings, modifier)
-    }
-    val capture: @Composable (Boolean) -> Unit = { compact ->
-        RecorderCaptureBar(camera, busy || waitingForPreviousTake || (recordingWork != null && !camera.recording && !camera.starting && !preparing), preparing, silentChoice, microphoneAllowed, project.clips.isNotEmpty(), project.durationUs, canRecord, toggleRecording, compact)
-    }
+    val displayBusy = busy || waitingForPreviousTake || (recordingWork != null && !camera.recording && !camera.starting && !preparing)
+    val viewState = RecorderViewState(camera, project.clips.size, project.durationUs, displayBusy, preparing,
+        silentChoice, microphoneAllowed, cameraAllowed, canRecord, error ?: camera.error)
+    val actions = RecorderActions(
+        onRecord = toggleRecording, onLeave = leave, onAudioToggle = audioToggle,
+        onSilentChoice = { silentChoice = true }, onSettings = openSettings, onPermission = requestCamera,
+        onSwitchCamera = { session.switchCamera(); preferredFront = session.state.value.front },
+        onFocusLock = session::setFocusLocked, onExposureLock = session::setExposureLocked,
+        onZoom = session::setZoom, onDismissError = model::clearError,
+    )
     BackHandler { leave() }
-    RecorderLayout(project, camera, preparing, leave, tools, preview, capture)
-}
-
-@Composable internal fun RecorderLayout(
-    project: Project,
-    camera: CameraUiState,
-    preparing: Boolean,
-    leave: () -> Unit,
-    tools: @Composable (Modifier) -> Unit,
-    preview: @Composable (Modifier) -> Unit,
-    capture: @Composable (Boolean) -> Unit,
-) {
-    var controlsExpanded by rememberSaveable { mutableStateOf(false) }
-    BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp).testTag("recorder_layout")) {
-        val wide = maxWidth > maxHeight
-        val compactLandscape = wide && maxHeight < 340.dp
-        val portraitPanelHeight = maxHeight * .30f
-        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = leave, enabled = !preparing, modifier = Modifier.weight(1f).testTag("leave_recorder")) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    Spacer(Modifier.width(6.dp))
-                    Text(if (camera.recording) "Termina e monta" else "Monta progetto", maxLines = 2)
-                }
-                if (wide) Text("${project.clips.size} clip · ${durationLabel(project.durationUs)}", style = MaterialTheme.typography.labelMedium)
-                else OutlinedButton(onClick = { controlsExpanded = !controlsExpanded }, modifier = Modifier.testTag("recorder_controls_toggle")) {
-                    Icon(if (controlsExpanded) Icons.Default.ExpandLess else Icons.Default.Tune, null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Controlli", maxLines = 1)
-                }
-            }
-            if (!compactLandscape) camera.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("camera_error")) }
-            if (compactLandscape) {
-                Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    preview(Modifier.weight(.6f).fillMaxHeight())
-                    tools(Modifier.weight(.4f).fillMaxHeight())
-                }
-                capture(true)
-            } else if (wide) {
-                Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column(Modifier.weight(.6f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        preview(Modifier.weight(1f).fillMaxWidth())
-                        RecorderQuality(camera.qualityLabel)
-                    }
-                    Column(Modifier.weight(.4f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        tools(Modifier.weight(1f).fillMaxWidth())
-                        capture(false)
-                    }
-                }
-            } else {
-                preview(Modifier.weight(1f).fillMaxWidth())
-                RecorderQuality(camera.qualityLabel)
-                if (controlsExpanded) tools(Modifier.fillMaxWidth().heightIn(max = portraitPanelHeight))
-                capture(false)
-            }
-        }
+    RecorderLayout(viewState, actions) { modifier ->
+        RecorderPreview(session, owner, preferredFront, cameraAllowed && cameraLease != null && !waitingForPreviousTake, modifier)
     }
 }
 
@@ -211,9 +143,6 @@ object ContextCompatPermission { fun missing(context: Context, permission: Strin
     owner: androidx.lifecycle.LifecycleOwner,
     front: Boolean,
     allowed: Boolean,
-    needsPermission: Boolean,
-    onPermission: () -> Unit,
-    onSettings: () -> Unit,
     modifier: Modifier,
 ) {
     Box(modifier.background(Color.Black).testTag("recorder_preview_pane"), contentAlignment = Alignment.Center) {
@@ -222,119 +151,16 @@ object ContextCompatPermission { fun missing(context: Context, permission: Strin
                 implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                 scaleType = PreviewView.ScaleType.FIT_CENTER
                 setOnTouchListener { view, event ->
-                    if (event.action == MotionEvent.ACTION_UP) { session.focus(event.x, event.y); view.performClick() }
+                    if (event.action == MotionEvent.ACTION_UP) {
+                        if (fitPreviewBounds(view.width.toFloat(), view.height.toFloat(), session.state.value.previewAspectRatio).contains(Offset(event.x, event.y))) session.focus(event.x, event.y)
+                        view.performClick()
+                    }
                     true
                 }
                 session.bind(owner, this, front = front)
             } },
             modifier = Modifier.fillMaxSize().testTag("camera_preview"),
         )
-        else if (needsPermission) Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text("Consenti l’accesso alla fotocamera per registrare.")
-            Text("Puoi sempre importare e montare video senza questo permesso.", style = MaterialTheme.typography.bodySmall)
-            Button(onClick = onPermission) { Text("Consenti fotocamera") }
-            TextButton(onClick = onSettings) { Text("Apri impostazioni app") }
-        }
         else CircularProgressIndicator(Modifier.size(28.dp))
-    }
-}
-
-@Composable private fun RecorderQuality(label: String) {
-    Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary,
-        maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().testTag("camera_quality"))
-}
-
-@Composable internal fun RecorderTools(
-    camera: CameraUiState,
-    silent: Boolean,
-    microphoneAllowed: Boolean,
-    blocked: Boolean,
-    onAudioToggle: (Boolean) -> Unit,
-    onSilentChoice: () -> Unit,
-    onSettings: () -> Unit,
-    onSwitchCamera: () -> Unit,
-    onFocusLock: (Boolean) -> Unit,
-    onExposureLock: (Boolean) -> Unit,
-    onZoom: (Float) -> Unit,
-    modifier: Modifier,
-) {
-    Surface(modifier.testTag("recorder_tools"), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Controlli fotocamera", style = MaterialTheme.typography.titleSmall)
-            camera.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("camera_error_detail")) }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(if (silent) Icons.Default.MicOff else Icons.Default.Mic, null)
-                Text(if (silent) "Senza audio" else "Microfono", modifier = Modifier.weight(1f))
-                Switch(checked = !silent, onCheckedChange = onAudioToggle, enabled = !blocked, modifier = Modifier.testTag("microphone"))
-            }
-            if (!microphoneAllowed && !silent) {
-                Text("Il microfono non è autorizzato. Consenti il permesso oppure scegli una ripresa senza audio.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                OutlinedButton(onClick = onSilentChoice, enabled = !blocked, modifier = Modifier.testTag("record_silent_choice")) { Text("Scegli ripresa senza audio") }
-                TextButton(onClick = onSettings) { Text("Gestisci permesso microfono") }
-            }
-            OutlinedButton(onClick = onSwitchCamera, enabled = !blocked && camera.hasFrontCamera && camera.hasBackCamera, modifier = Modifier.fillMaxWidth().testTag("switch_camera").semantics { stateDescription = if (camera.front) "Fotocamera frontale" else "Fotocamera posteriore" }) {
-                Icon(Icons.Default.Cameraswitch, null)
-                Spacer(Modifier.width(6.dp))
-                Text("Cambia fotocamera")
-            }
-            if (camera.canLockFocus) FilterChip(selected = camera.focusLocked, onClick = { onFocusLock(!camera.focusLocked) }, enabled = !camera.focusLockPending && !camera.finalizing && !camera.starting, label = { Text(if (camera.focusLockPending) "Blocco fuoco…" else if (camera.focusLocked) "Fuoco bloccato" else "Blocca fuoco") }, modifier = Modifier.fillMaxWidth().testTag("focus_lock"))
-            if (camera.canLockExposure) FilterChip(selected = camera.exposureLocked, onClick = { onExposureLock(!camera.exposureLocked) }, enabled = !camera.exposureLockPending && !camera.finalizing && !camera.starting, label = { Text(if (camera.exposureLockPending) "Blocco esposizione…" else if (camera.exposureLocked) "Esposizione bloccata" else "Blocca esposizione") }, modifier = Modifier.fillMaxWidth().testTag("exposure_lock"))
-            if (camera.maxZoomRatio > camera.minZoomRatio) {
-                Text("Zoom ${"%.1f".format(camera.zoomRatio)}×", style = MaterialTheme.typography.labelMedium)
-                Slider(value = camera.zoomRatio.coerceIn(camera.minZoomRatio, camera.maxZoomRatio), onValueChange = onZoom, valueRange = camera.minZoomRatio..camera.maxZoomRatio, enabled = camera.ready && !camera.finalizing, modifier = Modifier.fillMaxWidth().testTag("camera_zoom"))
-            }
-            Text(camera.qualityLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-            Text("Pausa finalizza e salva un segmento. Per continuare, premi Riprendi. Cambiando app la ripresa si arresta e viene salvata.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-        }
-    }
-}
-
-@Composable internal fun RecorderCaptureBar(
-    camera: CameraUiState,
-    busy: Boolean,
-    preparing: Boolean,
-    silent: Boolean,
-    microphoneAllowed: Boolean,
-    hasClips: Boolean,
-    projectDurationUs: Long,
-    canRecord: Boolean,
-    onRecord: () -> Unit,
-    compact: Boolean = false,
-) {
-    Surface(Modifier.fillMaxWidth().testTag("capture_controls"), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
-        val status: @Composable () -> Unit = {
-                val status = if (camera.recording) "REC ${durationLabel(camera.durationUs)}" else if (camera.starting || preparing) "Avvio…" else if (camera.finalizing || busy) "Salvataggio…" else "Pronto · ${durationLabel(projectDurationUs)}"
-                Text(status, color = if (camera.recording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                    style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium, maxLines = 2, modifier = Modifier.testTag("record_status"))
-        }
-        val audio: @Composable () -> Unit = {
-                val audio = if (silent) "Senza audio" else if (microphoneAllowed) "Audio attivo" else "Consenti audio"
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.testTag("record_audio_status")) {
-                    Icon(if (silent || !microphoneAllowed) Icons.Default.MicOff else Icons.Default.Mic, audio, modifier = Modifier.size(20.dp), tint = if (!silent && !microphoneAllowed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary)
-                    Text(audio, style = MaterialTheme.typography.labelSmall, maxLines = 2)
-                }
-        }
-        val button: @Composable (Modifier) -> Unit = { modifier ->
-            Button(onClick = onRecord, enabled = canRecord,
-                modifier = modifier.heightIn(min = 56.dp).testTag("record_toggle"),
-                colors = ButtonDefaults.buttonColors(containerColor = if (camera.recording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)) {
-                Icon(if (camera.recording) Icons.Default.Pause else Icons.Default.FiberManualRecord, null)
-                Spacer(Modifier.width(8.dp))
-                Text(if (camera.recording) "Pausa e salva" else if (hasClips) "Riprendi" else "Registra", style = MaterialTheme.typography.titleMedium, maxLines = 2)
-            }
-        }
-        if (compact) Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(Modifier.weight(.4f)) { status(); audio() }
-            button(Modifier.weight(.6f))
-        } else Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(Modifier.weight(1f)) { status() }
-                audio()
-            }
-            button(Modifier.fillMaxWidth())
-        }
     }
 }
