@@ -13,7 +13,10 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.io.IOException
+import java.lang.management.ManagementFactory
 import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.Callable
@@ -454,6 +457,102 @@ class ProjectRepositoryTest {
         }
         assertThrows(IOException::class.java) { replacementFailure.exportArchive(project.id, replacedOutput) }
         assertEquals("foreign destination", replacedOutput.readText())
+        assertEquals(project, normal.load(project.id))
+    }
+
+    @Test fun `writer close retains an inode lease and replacement cannot be reported successful or deleted`() {
+        val normal = repository()
+        val project = normal.create("Lease dopo chiusura")
+        listOf(false, true).forEach { failAtCheckpoint ->
+            val output = File(temporary.root, "after-writer-close-$failAtCheckpoint.zip")
+            var originalKey: Any? = null
+            val publisher = ProjectRepository(root) { phase ->
+                if (phase == SaveCheckpoint.ARCHIVE_DESTINATION_CREATED) {
+                    originalKey = Files.readAttributes(output.toPath(), BasicFileAttributes::class.java,
+                        LinkOption.NOFOLLOW_LINKS).fileKey()
+                }
+                if (phase == SaveCheckpoint.ARCHIVE_COPY_CLOSED) {
+                    Files.delete(output.toPath())
+                    output.writeText("foreign after writer close")
+                    val replacementKey = Files.readAttributes(output.toPath(), BasicFileAttributes::class.java,
+                        LinkOption.NOFOLLOW_LINKS).fileKey()
+                    // A live lease pins the old inode, so even Linux cannot recycle it here.
+                    assertNotEquals(originalKey, replacementKey)
+                    if (failAtCheckpoint) throw IOException("post-writer-close failure")
+                }
+            }
+            assertThrows(IOException::class.java) { publisher.exportArchive(project.id, output) }
+            assertEquals("foreign after writer close", output.readText())
+        }
+        assertEquals(project, normal.load(project.id))
+    }
+
+    @Test fun `failure after final handle release never authorizes cleanup with a historical key`() {
+        val normal = repository()
+        val project = normal.create("Proprietà scaduta")
+        listOf(false, true).forEach { replace ->
+            val output = File(temporary.root, "after-final-release-$replace.zip")
+            var originalKey: Any? = null
+            val publisher = ProjectRepository(root) { phase ->
+                if (phase == SaveCheckpoint.ARCHIVE_DESTINATION_CREATED) {
+                    originalKey = Files.readAttributes(output.toPath(), BasicFileAttributes::class.java,
+                        LinkOption.NOFOLLOW_LINKS).fileKey()
+                }
+                if (phase == SaveCheckpoint.ARCHIVE_HANDLES_CLOSED) {
+                    if (replace) {
+                        Files.delete(output.toPath())
+                        output.writeText("foreign after final release")
+                    } else {
+                        // Deterministically matches the historical key, but ownership has expired.
+                        assertEquals(originalKey, Files.readAttributes(output.toPath(), BasicFileAttributes::class.java,
+                            LinkOption.NOFOLLOW_LINKS).fileKey())
+                    }
+                    throw IOException("failure after final release")
+                }
+            }
+            assertThrows(IOException::class.java) { publisher.exportArchive(project.id, output) }
+            assertTrue(output.isFile)
+            if (replace) assertEquals("foreign after final release", output.readText())
+            else assertEquals(project.title, normal.importArchive(output).title)
+        }
+    }
+
+    @Test fun `archive publication releases descriptor leases after success and post-close failures`() {
+        val normal = repository()
+        val project = normal.create("Descriptor chiusi")
+        val bean = ManagementFactory.getOperatingSystemMXBean() as com.sun.management.UnixOperatingSystemMXBean
+        var sequence = 0
+        val failing = ProjectRepository(root) { phase ->
+            if (phase == SaveCheckpoint.ARCHIVE_COPY_CLOSED) throw IOException("repeat failure")
+        }
+        fun publishOnce() {
+            normal.exportArchive(project.id, File(temporary.root, "descriptor-success-${sequence++}.zip"))
+            assertThrows(IOException::class.java) {
+                failing.exportArchive(project.id, File(temporary.root, "descriptor-failure-${sequence++}.zip"))
+            }
+        }
+        publishOnce() // Warm up JDK/JUnit resources before counting descriptors.
+        val before = bean.openFileDescriptorCount
+        repeat(24) { publishOnce() }
+        assertTrue("Archive handles leaked: before=$before after=${bean.openFileDescriptorCount}",
+            bean.openFileDescriptorCount <= before + 4)
+    }
+
+    @Test fun `archive cleanup identity errors are suppressed without replacing the primary failure`() {
+        val normal = repository()
+        val project = normal.create("Errore originale")
+        val destination = File(temporary.root, "removed-during-copy.zip")
+        val primary = IOException("primary copy failure")
+        val publisher = ProjectRepository(root) { phase ->
+            if (phase == SaveCheckpoint.ARCHIVE_COPYING) {
+                Files.delete(destination.toPath())
+                throw primary
+            }
+        }
+        val caught = assertThrows(IOException::class.java) { publisher.exportArchive(project.id, destination) }
+        assertSame(primary, caught)
+        assertTrue(caught.suppressed.any { it is java.nio.file.NoSuchFileException })
+        assertFalse(destination.exists())
         assertEquals(project, normal.load(project.id))
     }
 

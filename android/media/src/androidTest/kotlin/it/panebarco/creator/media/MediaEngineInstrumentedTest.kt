@@ -103,6 +103,7 @@ class MediaEngineInstrumentedTest {
         val output = File(directory, "portrait-export.mp4")
         val progress = mutableListOf<Int>()
         withTimeout(120_000L) { engine.export(project, files::getValue, output) { progress += it } }
+        assertEquals("Successful export must commit/release its descriptor lease", 0, descriptorsFor(output))
         val exported = MediaProbe.inspect(output)
         MediaProbe.verifyExportTracks(output)
         val displayWidth = if (exported.rotationDegrees % 180 == 0) exported.width else exported.height
@@ -209,7 +210,7 @@ class MediaEngineInstrumentedTest {
             val results = listOf("one", "two").map { text -> executor.submit<Boolean> {
                 val partial = File(directory, "$text.partial").apply { writeText(text) }
                 start.await(5, java.util.concurrent.TimeUnit.SECONDS)
-                runCatching { ExportFiles.publishNoReplace(partial, destination) }.isSuccess
+                runCatching { ExportFiles.publishNoReplace(partial, destination).use {} }.isSuccess
             } }
             start.countDown()
             val succeeded = results.map { it.get(10, java.util.concurrent.TimeUnit.SECONDS) }
@@ -225,12 +226,72 @@ class MediaEngineInstrumentedTest {
             }.exceptionOrNull() is java.util.concurrent.CancellationException)
             assertFalse(cancelOutput.exists())
             val published = File(directory, "owned.mp4")
-            val publication = ExportFiles.publishNoReplace(partial, published)
-            assertTrue(published.delete())
-            published.writeText("foreign")
-            assertFalse(publication.deleteIfOwned())
-            assertEquals("foreign", published.readText())
+            ExportFiles.publishNoReplace(partial, published).use { publication ->
+                assertTrue(published.delete())
+                published.writeText("foreign")
+                assertFalse(publication.deleteIfOwned())
+                assertEquals("foreign", published.readText())
+            }
+            assertEquals(0, descriptorsFor(published))
+            assertEquals(0, descriptorsFor(destination))
+            assertEquals(0, descriptorsFor(cancelOutput))
         } finally { executor.shutdownNow() }
+    }
+
+    @Test fun androidPublicationLeasePinsIdentityAndClosesOnEveryTerminalPath() {
+        val directory = File(context.filesDir, "media-qa/${UUID.randomUUID()}").apply { mkdirs() }
+        val partial = File(directory, "lease.partial").apply { writeText("completed-render") }
+        repeat(32) { index ->
+            val output = File(directory, "lease-$index.mp4")
+            ExportFiles.publishNoReplace(partial, output).use { publication ->
+                assertEquals("Only the independently retained lease remains after writer.close", 1, descriptorsFor(output))
+                if (index % 2 == 0) {
+                    assertTrue(publication.deleteIfOwned())
+                    assertFalse(output.exists())
+                } else {
+                    assertTrue(output.delete())
+                    output.writeText("foreign-$index")
+                    assertEquals("The unlinked inode must remain pinned", 1, descriptorsFor(output))
+                    assertFalse(publication.deleteIfOwned())
+                    assertEquals("foreign-$index", output.readText())
+                }
+                assertEquals(0, descriptorsFor(output))
+                assertFalse("A released capability must never inspect/delete a pathname", publication.deleteIfOwned())
+            }
+            assertEquals(0, descriptorsFor(output))
+        }
+        val committed = File(directory, "committed.mp4")
+        ExportFiles.publishNoReplace(partial, committed).use { publication ->
+            assertEquals(1, descriptorsFor(committed))
+            publication.commit()
+            assertEquals(0, descriptorsFor(committed))
+            assertFalse(publication.deleteIfOwned())
+            assertEquals("completed-render", committed.readText())
+        }
+    }
+
+    @Test fun exportCompletionFailurePreservesReplacementAndReleasesLease() = runBlocking {
+        val directory = File(context.filesDir, "media-qa/${UUID.randomUUID()}").apply { mkdirs() }
+        val sourceFile = fixture("landscape-tone.mp4", directory)
+        val metadata = MediaProbe.inspect(sourceFile)
+        var project = ProjectEditor.appendImport(Project.create("Lease completamento", CanvasShape.LANDSCAPE), metadata)
+        project = ProjectEditor.trim(project, project.clips.single().id, 100_000L, 1_100_000L)
+        val output = File(directory, "completion.mp4")
+        val primary = java.util.concurrent.CancellationException("cancel after writer close")
+        val actual = runCatching {
+            ProjectMediaEngine(context).export(project, { sourceFile }, output) { progress ->
+                if (progress == 100) {
+                    assertEquals("Engine retains the lease until its final handoff", 1, descriptorsFor(output))
+                    assertTrue(output.delete())
+                    output.writeText("foreign-completion-replacement")
+                    throw primary
+                }
+            }
+        }.exceptionOrNull()
+        assertSame(primary, actual)
+        assertEquals("foreign-completion-replacement", output.readText())
+        assertEquals(0, descriptorsFor(output))
+        assertTrue(directory.listFiles().orEmpty().none { it.name.endsWith(".render.mp4") })
     }
 
     @Test fun sharpMarkersStayWithinOneFrameAcrossNonKeyframeTrimsAndMultipleJoins() = runBlocking {
@@ -373,6 +434,15 @@ class MediaEngineInstrumentedTest {
         assertFalse(report.contains(context.filesDir.absolutePath))
         assertFalse(json.has("serial"))
         assertFalse(json.has("androidId"))
+    }
+
+    private fun descriptorsFor(file: File): Int {
+        val expected = file.canonicalPath
+        val descriptors = requireNotNull(File("/proc/self/fd").listFiles()) { "Cannot inspect own descriptor lifecycle" }
+        return descriptors.count { descriptor ->
+            val target = runCatching { android.system.Os.readlink(descriptor.absolutePath) }.getOrNull()
+            target != null && runCatching { File(target.removeSuffix(" (deleted)")).canonicalPath == expected }.getOrDefault(false)
+        }
     }
 
     private fun videoFlashStarts(file: File, expected: List<Long>): List<Long> {

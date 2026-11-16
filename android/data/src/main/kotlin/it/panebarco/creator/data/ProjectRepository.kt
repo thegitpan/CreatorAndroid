@@ -41,7 +41,7 @@ data class RepositoryWarning(val projectId: String, val message: String)
 /** Useful for both tests and diagnostics; failure never removes a committed source. */
 internal enum class SaveCheckpoint {
     RECEIPT_SYNCED, SOURCE_MOVED, REVISION_SYNCED, BEFORE_MANIFEST_REPLACE, MANIFEST_REPLACED, BEFORE_ARCHIVE_PUBLISH,
-    ARCHIVE_DESTINATION_CREATED, ARCHIVE_COPYING, ARCHIVE_COPY_CLOSED,
+    ARCHIVE_DESTINATION_CREATED, ARCHIVE_COPYING, ARCHIVE_COPY_CLOSED, ARCHIVE_HANDLES_CLOSED,
     BEFORE_PENDING_ORIGIN_WRITE, PENDING_ORIGIN_SYNCED,
 }
 
@@ -677,48 +677,93 @@ class ProjectRepository internal constructor(
      * Android untrusted_app SELinux denies hard links. CREATE_NEW reserves a fresh name without
      * replacing any existing entry; only a fully copied, synced and closed archive is reported.
      * Process death can leave an incomplete external file, which has never been reported successful.
+     * The supported namespace is private storage with a single writer. The path comparison and
+     * unlink are not atomic against an arbitrary external process changing that same name.
      */
     private fun publishArchiveExclusive(temporary: File, destination: File, parent: File) {
-        var created = false
+        var output: FileChannel? = null
+        var lease: FileChannel? = null
         var ownedFileKey: Any? = null
+        var leaseVerified = false
+        var failure: Throwable? = null
         try {
-            FileChannel.open(destination.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE,
-                LinkOption.NOFOLLOW_LINKS).use { output ->
-                created = true
-                ownedFileKey = Files.readAttributes(destination.toPath(), BasicFileAttributes::class.java,
-                    LinkOption.NOFOLLOW_LINKS).fileKey()
-                checkpoint(SaveCheckpoint.ARCHIVE_DESTINATION_CREATED)
-                FileInputStream(temporary).channel.use { input ->
-                    val buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE)
-                    while (true) {
-                        if (Thread.currentThread().isInterrupted) throw InterruptedIOException("Backup annullato.")
-                        buffer.clear()
-                        if (input.read(buffer) < 0) break
-                        buffer.flip()
-                        while (buffer.hasRemaining()) output.write(buffer)
-                        checkpoint(SaveCheckpoint.ARCHIVE_COPYING)
-                    }
+            output = FileChannel.open(destination.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE,
+                LinkOption.NOFOLLOW_LINKS)
+            ownedFileKey = Files.readAttributes(destination.toPath(), BasicFileAttributes::class.java,
+                LinkOption.NOFOLLOW_LINKS).fileKey()
+            checkpoint(SaveCheckpoint.ARCHIVE_DESTINATION_CREATED)
+            FileInputStream(temporary).channel.use { input ->
+                val buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    if (Thread.currentThread().isInterrupted) throw InterruptedIOException("Backup annullato.")
+                    buffer.clear()
+                    if (input.read(buffer) < 0) break
+                    buffer.flip()
+                    while (buffer.hasRemaining()) output.write(buffer)
+                    checkpoint(SaveCheckpoint.ARCHIVE_COPYING)
                 }
-                output.force(true)
             }
+            output.force(true)
+            if (ownedFileKey == null || !matchesOwnedFile(destination, ownedFileKey)) {
+                throw IOException("La destinazione del backup non è verificabile. Scegli un'altra cartella.")
+            }
+            // Pin the inode across writer close. A historical key alone is unsafe: Linux may reuse
+            // its inode immediately after the last descriptor is closed and the path is unlinked.
+            lease = FileChannel.open(destination.toPath(), StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)
+            if (!output.isOpen || !matchesOwnedFile(destination, ownedFileKey)) {
+                throw IOException("La destinazione del backup è cambiata durante il salvataggio.")
+            }
+            leaseVerified = true
+            output.close()
             checkpoint(SaveCheckpoint.ARCHIVE_COPY_CLOSED)
-            if (ownedFileKey != null && !matchesOwnedFile(destination, ownedFileKey)) {
+            if (!lease.isOpen || !matchesOwnedFile(destination, ownedFileKey)) {
                 throw IOException("La destinazione del backup è cambiata durante il salvataggio.")
             }
             syncDirectory(parent)
+            // Disable ownership before releasing the final pin, including when close itself fails.
+            leaseVerified = false
+            lease.close()
+            checkpoint(SaveCheckpoint.ARCHIVE_HANDLES_CLOSED)
         } catch (error: Throwable) {
-            // Some Android providers return a null fileKey: preserve the uncertain file in that case.
-            if (created && ownedFileKey != null && matchesOwnedFile(destination, ownedFileKey)) {
-                try { Files.deleteIfExists(destination.toPath()); syncDirectory(parent) } catch (_: IOException) { /* retain safely */ }
+            failure = error
+            val inodePinned = output?.isOpen == true || (leaseVerified && lease?.isOpen == true)
+            // Unknown identity or released descriptors cannot authorize deletion, even if a later
+            // foreign file happens to reuse the exact same fileKey.
+            if (inodePinned && ownedFileKey != null) {
+                try {
+                    if (matchesOwnedFileOrThrow(destination, ownedFileKey)) {
+                        Files.deleteIfExists(destination.toPath())
+                        syncDirectory(parent)
+                    }
+                } catch (cleanupError: Throwable) {
+                    if (cleanupError !== error) error.addSuppressed(cleanupError)
+                }
             }
             throw error
+        } finally {
+            var closeFailure: Throwable? = null
+            fun closeHandle(handle: FileChannel?) {
+                try { handle?.close() } catch (error: Throwable) {
+                    val primary = failure ?: closeFailure
+                    if (primary != null) {
+                        if (primary !== error) primary.addSuppressed(error)
+                    } else closeFailure = error
+                }
+            }
+            closeHandle(output)
+            closeHandle(lease)
+            if (failure == null) closeFailure?.let { throw it }
         }
     }
 
     private fun matchesOwnedFile(file: File, fileKey: Any): Boolean = try {
-        val attributes = Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
-        attributes.isRegularFile && attributes.fileKey() == fileKey
+        matchesOwnedFileOrThrow(file, fileKey)
     } catch (_: IOException) { false }
+
+    private fun matchesOwnedFileOrThrow(file: File, fileKey: Any): Boolean {
+        val attributes = Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+        return attributes.isRegularFile && attributes.fileKey() == fileKey
+    }
 
     private fun <T> locked(operation: () -> T): T = synchronized(processLock) {
         ensureDirectory(root)

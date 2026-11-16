@@ -82,6 +82,7 @@ class ProjectMediaEngine(context: Context) {
         require(activeOutputs.add(destination.path)) { "Un'esportazione verso questo file è già in corso." }
         val partial = File(destination.parentFile, ".${destination.name}.${UUID.randomUUID()}.render.mp4")
         var publication: ExportFiles.Publication? = null
+        var failure: Throwable? = null
         try {
             withContext(Dispatchers.IO) {
                 require(!destination.exists()) { "Il file di destinazione esiste già. Scegli un nuovo nome." }
@@ -108,12 +109,20 @@ class ProjectMediaEngine(context: Context) {
                 publication = ExportFiles.publishNoReplace(partial, destination, checkCancellation = { ensureActive() })
             }
             withContext(Dispatchers.Main.immediate) { onProgress(100) }
+            publication?.commit()
         } catch (error: Throwable) {
-            publication?.deleteIfOwned()
+            failure = error
+            try { publication?.deleteIfOwned() } catch (cleanupError: Throwable) { error.addSuppressed(cleanupError) }
             throw error
         } finally {
-            partial.delete()
-            activeOutputs.remove(destination.path)
+            try {
+                publication?.close()
+            } catch (closeError: Throwable) {
+                if (failure == null) throw closeError else failure.addSuppressed(closeError)
+            } finally {
+                partial.delete()
+                activeOutputs.remove(destination.path)
+            }
         }
     }
 

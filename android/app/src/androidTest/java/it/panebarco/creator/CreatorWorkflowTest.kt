@@ -1,6 +1,8 @@
 package it.panebarco.creator
 
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import android.app.Activity
@@ -37,7 +39,37 @@ class CreatorWorkflowTest {
     private fun launch() { scenario = ActivityScenario.launch(MainActivity::class.java); idle() }
     private fun idle() { compose.waitUntil(15_000) { compose.onAllNodesWithTag("operation_progress").fetchSemanticsNodes().isEmpty() }; compose.waitForIdle() }
     private fun waitProject(id: String, predicate: (Project) -> Boolean) { compose.waitUntil(15_000) { runCatching { predicate(repository.load(id)) }.getOrDefault(false) }; idle() }
-    private fun click(tag: String) { val node = compose.onNodeWithTag(tag); if (runCatching { node.assertIsDisplayed() }.isFailure) node.performScrollTo(); node.performClick(); idle() }
+    private fun click(tag: String) {
+        val node = compose.onNodeWithTag(tag)
+        val ancestors = generateSequence(node.fetchSemanticsNode().parent) { it.parent }
+        if (ancestors.any { it.config.contains(SemanticsProperties.HorizontalScrollAxisRange) || it.config.contains(SemanticsProperties.VerticalScrollAxisRange) }) node.performScrollTo()
+        repeat(8) {
+            if (fullyVisible(node)) { node.assertIsEnabled().performClick(); idle(); return }
+            // performScrollTo can stop at an inner horizontal row. Scroll its outer vertical
+            // viewport with a real gesture rather than tapping an offscreen/partly clipped node.
+            val viewport = generateSequence(node.fetchSemanticsNode().parent) { it.parent }
+                .firstOrNull { it.config.contains(SemanticsProperties.VerticalScrollAxisRange) }
+                ?: throw AssertionError("Control '$tag' is not fully visible and has no vertical scroll viewport")
+            val target = node.getUnclippedBoundsInRoot()
+            val targetCenterY = (target.top.value + target.bottom.value) * .5f * app.resources.displayMetrics.density
+            val below = targetCenterY > viewport.boundsInRoot.center.y
+            compose.onNode(SemanticsMatcher("vertical viewport for $tag") { candidate -> candidate.id == viewport.id }, useUnmergedTree = true)
+                .performTouchInput {
+                    val x = width * .02f
+                    swipe(Offset(x, height * if (below) .8f else .2f), Offset(x, height * if (below) .2f else .8f), durationMillis = 300)
+                }
+            compose.waitForIdle()
+        }
+        throw AssertionError("Control '$tag' did not become fully visible after 8 public scroll gestures")
+    }
+    private fun fullyVisible(node: SemanticsNodeInteraction): Boolean {
+        if (runCatching { node.assertIsDisplayed() }.isFailure) return false
+        val visible = node.fetchSemanticsNode().boundsInRoot
+        val full = node.getUnclippedBoundsInRoot()
+        val density = app.resources.displayMetrics.density
+        return visible.left <= full.left.value * density + 1f && visible.top <= full.top.value * density + 1f &&
+            visible.right + 1f >= full.right.value * density && visible.bottom + 1f >= full.bottom.value * density
+    }
     private fun seed(): Project {
         var project = repository.create("QA Editor ${UUID.randomUUID().toString().take(8)}")
         owned += project.id
@@ -91,6 +123,7 @@ class CreatorWorkflowTest {
         waitProject(original.id) { it.clips.size == 3 }
         click("clip_0")
         click("trim")
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("trim_start").fetchSemanticsNodes().size == 1 }
         compose.onNodeWithTag("trim_start").performTextReplacement("0.2")
         compose.onNodeWithTag("trim_end").performTextReplacement("1.0")
         click("apply_trim")
