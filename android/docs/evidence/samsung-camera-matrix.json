@@ -121,9 +121,10 @@
     "all11OtherProjectFilesUnchanged": true
   },
   "remaining": [
-    "Reconnect Samsung, capture new full backup and install candidate C in place",
-    "Compare real preview and saved movie for front/rear portrait and both landscape directions",
+    "Reconnect Samsung and repeat rear landscape USB-right with identifiable upright scene and text",
+    "Compare preview and saved movie for front/rear portrait and landscape USB-left",
     "Physical off-center AF/AE points and overlays",
+    "Final complete backup and all prior-source / other-project invariants",
     "Real audiovisual sync and longer hardware acceptance matrix"
   ],
   "fullHardwareAcceptanceComplete": false,
@@ -202,7 +203,7 @@
     "lintPassed": true,
     "signedBuildsPassed": true,
     "actualSamsungInstalled": true,
-    "physicalAcceptance": "in progress after verified APK installation",
+    "physicalAcceptance": "partial: front USB-right accepted; rear USB-right retry requested by user, latest scene not suitable for upright-orientation acceptance; USB reconnection required",
     "productionSourceCommit": "7e019ae1e89e372ea47038253bedb652c78e8e96",
     "fullLocalValidation": {
       "distinctPassed": 100,
@@ -353,13 +354,124 @@
       "existingOriginalsUnchanged": 6,
       "otherProjectFilesUnchanged": 13,
       "qaLedger": 6
-    }
+    },
+    "unacceptedRetryTakes": [
+      {
+        "cameraId": "0",
+        "orientation": "landscape",
+        "screenWidth": 2340,
+        "screenHeight": 1080,
+        "profile": "Profilo video. 1080p \u00b7 1920\u00d71080 \u00b7 rotazione 0\u00b0 \u00b7 SDR \u00b7 richiesti 30 fps",
+        "recordBounds": [
+          1854,
+          464,
+          2090,
+          700
+        ],
+        "recordVisibleDuringCapture": true,
+        "idleRecordingSavedButtonBoundsEqual": true,
+        "publicRecordAndPauseUsed": true,
+        "clipsBefore": 6,
+        "clipsAfter": 7,
+        "durationUs": 5064500,
+        "codec": "h264",
+        "codedWidth": 1920,
+        "codedHeight": 1080,
+        "appRotationDegrees": 0,
+        "ffprobeRotationDegrees": 0,
+        "displayWidth": 1920,
+        "displayHeight": 1080,
+        "averageFps": 30.012768590145807,
+        "audioCodec": "aac",
+        "audioSampleRate": 48000,
+        "audioChannels": 2,
+        "audioMeanDbFS": -39.9,
+        "audioPeakDbFS": -20.4,
+        "sha256": "d17e469653e60d35b9834e2ec373ea8aff5548256bb43495104a2f80d768dfcf",
+        "sha256MatchesManifest": true,
+        "fullMovieDecodedWithoutErrors": true,
+        "exactlyOneNewTake": true,
+        "previewFileVisualReview": "user rejected this take and requested a new recording; preserve as rejected evidence",
+        "orientationEvidenceAccepted": false,
+        "userRejected": true,
+        "case": "rear-right-clear",
+        "imageComparison": {
+          "0": 0.5622184235466522,
+          "180": -0.3136796640642732
+        },
+        "renderer": {
+          "cameraId": "0",
+          "front": false,
+          "nativePreviewMirrored": false,
+          "renderer": "TextureView",
+          "transformationInfo": "TransformationInfo{getCropRect=Rect(0, 0 - 1920, 1080), getRotationDegrees=0, getTargetRotation=1, hasCameraTransform=true, getSensorToBufferTransform=Matrix{[0.47058824, 0.0, -0.0][0.0, 0.47058824, -180.0][0.0, 0.0, 1.0]}, isMirroring=false}"
+        }
+      },
+      {
+        "cameraId": "0",
+        "orientation": "landscape",
+        "screenWidth": 2340,
+        "screenHeight": 1080,
+        "profile": "Profilo video. 1080p \u00b7 1920\u00d71080 \u00b7 rotazione 0\u00b0 \u00b7 SDR \u00b7 richiesti 30 fps",
+        "recordBounds": [
+          1854,
+          464,
+          2090,
+          700
+        ],
+        "recordVisibleDuringCapture": true,
+        "idleRecordingSavedButtonBoundsEqual": true,
+        "publicRecordAndPauseUsed": true,
+        "clipsBefore": 7,
+        "clipsAfter": 8,
+        "durationUs": 5197800,
+        "codec": "h264",
+        "codedWidth": 1920,
+        "codedHeight": 1080,
+        "appRotationDegrees": 0,
+        "ffprobeRotationDegrees": 0,
+        "displayWidth": 1920,
+        "displayHeight": 1080,
+        "averageFps": 30.01276183676392,
+        "audioCodec": "aac",
+        "audioSampleRate": 48000,
+        "audioChannels": 2,
+        "audioMeanDbFS": -33.1,
+        "audioPeakDbFS": -16.6,
+        "sha256": "b43371ac905fcf459ee5edac6cac0cffb4a0253ad6b2b9ebc46553e45d08fd86",
+        "sha256MatchesManifest": true,
+        "fullMovieDecodedWithoutErrors": true,
+        "exactlyOneNewTake": true,
+        "previewFileVisualReview": "inconclusive: preview and saved frame show matching chair/cushion scene, but no readable text or reliable upright reference",
+        "orientationEvidenceAccepted": false,
+        "case": "rear-right-redo",
+        "imageComparison": {
+          "0": 0.6752237033826691,
+          "180": -0.07606774700878927
+        },
+        "renderer": {
+          "cameraId": "0",
+          "front": false,
+          "nativePreviewMirrored": false,
+          "renderer": "TextureView",
+          "transformationInfo": "TransformationInfo{getCropRect=Rect(0, 0 - 1920, 1080), getRotationDegrees=0, getTargetRotation=1, hasCameraTransform=true, getSensorToBufferTransform=Matrix{[0.47058824, 0.0, -0.0][0.0, 0.47058824, -180.0][0.0, 0.0, 1.0]}, isMirroring=false}"
+        }
+      }
+    ],
+    "currentQaLedgerLastObserved": 8,
+    "pendingUserClarification": "Whether the rejected file was upside-down, wrong camera/scene, or an earlier clip",
+    "pendingPhoneAction": "Reconnect and unlock; landscape USB-right, rear camera toward well-lit readable text; hold position until capture finishes"
   },
   "lastVerifiedPhoneBackup": {
-    "files": 25,
-    "bytes": 171481489,
+    "backupVerifiedAgainstDevice": true,
+    "files": 27,
+    "bytes": 193169693,
+    "existingOriginalsUnchanged": 6,
+    "otherProjectFilesUnchanged": 13,
+    "qaLedger": 6,
     "projects": 4,
     "verifiedAgainstDeviceSha256": true,
-    "priorOriginalsPreserved": true
-  }
+    "includesLatestRetryTakes": false
+  },
+  "currentPrivateEvidenceDirectory": "android/.qa/evidence/samsung/20261116-c-final/"
 }

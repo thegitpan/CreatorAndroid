@@ -1,6 +1,6 @@
 # Stato della candidata personale 0.1.2
 
-Aggiornato il 16 novembre 2026. La candidata C 0.1.2/code 3 interviene sul percorso dell’anteprima frontale non specchiata e separa la rotazione del display da quella del segmento registrato. **100 test locali e CI verdi; accettazione fisica ancora aperta.** Il Samsung è stato ricollegato e la candidata C è ora installata in-place: il checksum dell’APK effettivamente sul telefono coincide con `29d2ba0844b38fadc2ecf73979b05fe0596ff494648d295433378bc96ce44ada`. Tutti i 25 file sono identici subito dopo l’aggiornamento. La prima frontale in orizzontale con USB a destra è ora verificata: preview e file diritti e coerenti. La posteriore della stessa posa ha ripreso una scena scura e resta non conclusiva; sono richieste le altre pose della matrice.
+Aggiornato il 16 novembre 2026. La candidata C 0.1.2/code 3 interviene sul percorso dell’anteprima frontale non specchiata e separa la rotazione del display da quella del segmento registrato. **100 test locali e CI verdi; accettazione fisica ancora aperta.** Il Samsung è stato ricollegato e la candidata C è ora installata in-place: il checksum dell’APK effettivamente sul telefono coincide con `29d2ba0844b38fadc2ecf73979b05fe0596ff494648d295433378bc96ce44ada`. Tutti i 25 file sono identici subito dopo l’aggiornamento. La prima frontale in orizzontale con USB a destra è ora verificata: preview e file diritti e coerenti. La posteriore della stessa posa resta non conclusiva: una ripresa è stata rifiutata dall’utente e la ripetizione mostra una poltrona senza un riferimento affidabile per il verso. Il Samsung è ora scollegato; sono richieste una nuova scena con testo e le altre pose della matrice.
 
 ## Consegna
 
@@ -8,7 +8,7 @@ Aggiornato il 16 novembre 2026. La candidata C 0.1.2/code 3 interviene sul perco
 - Sorgente della candidata C: `7e019ae1e89e372ea47038253bedb652c78e8e96`.
 - Consegna locale: `android/outputs/Creator-0.1.2/`, con APK test per aggiornare `it.panebarco.creator.debug` e APK personale separato `it.panebarco.creator`.
 - Firme precedenti mantenute; chiave personale fuori dal repository. SHA-256, firme e stato esatto della CI sono in BUILD.json nella consegna.
-- Ultimo backup completo verificato: **quattro progetti, 25 file, 171.481.489 byte**. Include i progetti aggiunti dall’utente e le riprese QA. Nessuna disinstallazione o cancellazione di progetti effettuata.
+- Ultimo backup completo verificato: **quattro progetti, 27 file, 193.169.693 byte**, dopo le prime due riprese della candidata C. I sei originali precedenti e i 13 file degli altri progetti sono identici. Le due ripetizioni successive sono estratte con hash verificati, ma il backup completo finale è ancora da acquisire. Nessuna disinstallazione o cancellazione di progetti effettuata.
 - Nessuna release pubblica dell’APK o pubblicazione Google Play.
 
 ## Comportamento disponibile
