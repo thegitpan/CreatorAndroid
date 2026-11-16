@@ -99,7 +99,7 @@ class RecorderErrorLayoutTest {
             screenshot("camera-error-200")
             assertTargets("error_details")
             compose.onNodeWithTag("error_details").performTouchInput { click() }
-            compose.onNodeWithText(requireNotNull(ui.value.error)).assertIsDisplayed()
+            compose.onNode(hasText(requireNotNull(ui.value.error)) and hasAnyAncestor(isDialog())).assertIsDisplayed()
             screenshot("camera-error-details-200")
             compose.onNodeWithTag("close_error_details").performTouchInput { click() }
             compose.onNodeWithContentDescription("Chiudi avviso").performTouchInput { click() }
