@@ -11,8 +11,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +29,7 @@ import it.panebarco.creator.domain.CanvasShape
 import it.panebarco.creator.domain.Project
 import it.panebarco.creator.domain.ProjectEditor
 import it.panebarco.creator.domain.TimelineClip
+import it.panebarco.creator.domain.TimelineTime
 import it.panebarco.creator.media.MediaProbe
 import it.panebarco.creator.media.ProjectMediaEngine
 import kotlinx.coroutines.CancellationException
@@ -56,15 +55,15 @@ import java.math.RoundingMode
     val export by ExportJobs.state.collectAsStateWithLifecycle()
     val selected = project.clips.firstOrNull { it.id == selectedId }
     val selectedIndex = project.clips.indexOfFirst { it.id == selectedId }
-    val selectedStart = project.clips.take(selectedIndex.coerceAtLeast(0)).sumOf { it.durationUs }
-    val sourceSplit = selected?.let { it.sourceStartUs + positionUs - selectedStart }
-    val canSplit = selected != null && sourceSplit != null && sourceSplit > selected.sourceStartUs && sourceSplit < selected.sourceEndUs
+    val splitPosition = remember(project, positionUs) { TimelineTime.locate(project, positionUs.coerceIn(0, project.durationUs)) }
+    val splitClip = splitPosition?.let { project.clips[it.clipIndex] }
+    val canSplit = splitPosition != null && splitClip != null && splitPosition.sourceTimeUs > splitClip.sourceStartUs && splitPosition.sourceTimeUs < splitClip.sourceEndUs
     LaunchedEffect(project) {
         if (project.clips.none { it.id == selectedId }) selectedId = project.clips.firstOrNull()?.id
         try {
             sourceFiles = withContext(Dispatchers.IO) { project.clips.map { it.sourceId }.distinct().associateWith { model.repository.sourceFile(project.id, it) } }
         } catch (e: CancellationException) { throw e }
-        catch (e: Exception) { sourceFiles = emptyMap(); model.reportError("Un originale della timeline non è disponibile: ${e.message}. Conserva il progetto e ripristina il backup.") }
+        catch (e: Exception) { sourceFiles = emptyMap(); model.reportError(AppErrors.describe(e, AppOperation.ORIGINAL)) }
     }
     DisposableEffect(project, sourceFiles, export.phase) {
         var created: Player? = null
@@ -72,11 +71,11 @@ import java.math.RoundingMode
             try {
                 created = ProjectMediaEngine(context).createPreview(project) { sourceFiles.getValue(it) }
                 created.addListener(object : Player.Listener {
-                    override fun onPlayerError(error: androidx.media3.common.PlaybackException) { model.reportError("Anteprima interrotta: ${error.message ?: "formato non supportato"}. L’originale è conservato; prova un altro video.") }
+                    override fun onPlayerError(error: androidx.media3.common.PlaybackException) { if (player === created) model.reportError(AppErrors.describe(error, AppOperation.PREVIEW)) }
                 })
                 created.seekTo((positionUs.coerceAtMost(project.durationUs) / 1_000L))
                 player = created
-            } catch (e: Exception) { model.reportError("Anteprima non disponibile: ${e.message ?: "formato non supportato"}") }
+            } catch (e: Exception) { model.reportError(AppErrors.describe(e, AppOperation.PREVIEW)) }
         }
         onDispose { if (player === created) player = null; created?.release() }
     }
@@ -87,11 +86,9 @@ import java.math.RoundingMode
         }
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            FilledTonalButton(onClick = { model.navigate(Destination.RECORDER) }, enabled = !busy, modifier = Modifier.testTag("continue_recording")) { Icon(Icons.Default.Videocam, null); Spacer(Modifier.width(6.dp)); Text("Continua ripresa") }
-            OutlinedButton(onClick = onImport, enabled = !busy, modifier = Modifier.testTag("import_video")) { Icon(Icons.Default.VideoLibrary, null); Spacer(Modifier.width(6.dp)); Text("Importa video") }
-            IconButton(onClick = { model.edit(ProjectEditor::undo) }, enabled = !busy && project.canUndo, modifier = Modifier.testTag("undo")) { Icon(Icons.AutoMirrored.Filled.Undo, "Annulla modifica") }
-            IconButton(onClick = { model.edit(ProjectEditor::redo) }, enabled = !busy && project.canRedo, modifier = Modifier.testTag("redo")) { Icon(Icons.AutoMirrored.Filled.Redo, "Ripristina modifica") }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            FilledTonalButton(onClick = { model.navigate(Destination.RECORDER) }, enabled = !busy, modifier = Modifier.weight(1f).testTag("continue_recording")) { Icon(Icons.Default.Videocam, null); Spacer(Modifier.width(6.dp)); Text("Continua ripresa") }
+            OutlinedButton(onClick = onImport, enabled = !busy, modifier = Modifier.weight(1f).testTag("import_video")) { Icon(Icons.Default.VideoLibrary, null); Spacer(Modifier.width(6.dp)); Text("Importa video") }
         }
         Box(Modifier.fillMaxWidth().heightIn(min = 180.dp, max = 300.dp).background(Color.Black), contentAlignment = Alignment.Center) {
             if (project.clips.isEmpty()) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
@@ -110,6 +107,7 @@ import java.math.RoundingMode
             FilterChip(selected = project.canvas == CanvasShape.LANDSCAPE, onClick = { if (!busy) model.setCanvas(CanvasShape.LANDSCAPE) }, label = { Text("16:9") }, modifier = Modifier.testTag("canvas_landscape"))
         }
         Slider(value = if (project.durationUs == 0L) 0f else (positionUs.toDouble() / project.durationUs).toFloat().coerceIn(0f, 1f), onValueChange = { dragging = true; player?.pause(); positionUs = (project.durationUs * it.toDouble()).toLong(); player?.seekTo(positionUs / 1_000) }, onValueChangeFinished = { dragging = false }, enabled = project.durationUs > 0, modifier = Modifier.fillMaxWidth().testTag("timeline_scrubber"))
+        OutlinedButton(onClick = { splitPosition?.let { point -> model.edit { ProjectEditor.split(it, point.clipId, point.sourceTimeUs) } } }, enabled = !busy && canSplit, modifier = Modifier.testTag("split")) { Icon(Icons.Default.ContentCut, null); Spacer(Modifier.width(6.dp)); Text("Dividi qui") }
         if (project.clips.isNotEmpty()) {
             Text("Timeline · tocca una clip per selezionarla", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
             LazyRow(Modifier.fillMaxWidth().height(154.dp).testTag("timeline"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -129,7 +127,6 @@ import java.math.RoundingMode
         if (selected != null) {
             Text("Clip ${selectedIndex + 1} selezionata", style = MaterialTheme.typography.titleSmall, modifier = Modifier.testTag("selected_clip"))
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                OutlinedButton(onClick = { model.edit { ProjectEditor.split(it, selected.id, requireNotNull(sourceSplit)) } }, enabled = !busy && canSplit, modifier = Modifier.testTag("split")) { Icon(Icons.Default.ContentCut, null); Spacer(Modifier.width(6.dp)); Text("Dividi qui") }
                 OutlinedButton(onClick = { trim = selected }, enabled = !busy, modifier = Modifier.testTag("trim")) { Text("Rifila") }
                 OutlinedButton(onClick = { model.edit { ProjectEditor.move(it, selected.id, selectedIndex - 1) } }, enabled = !busy && selectedIndex > 0, modifier = Modifier.testTag("move_left")) { Icon(Icons.Default.ArrowBack, "Sposta prima") }
                 OutlinedButton(onClick = { model.edit { ProjectEditor.move(it, selected.id, selectedIndex + 1) } }, enabled = !busy && selectedIndex < project.clips.lastIndex, modifier = Modifier.testTag("move_right")) { Icon(Icons.Default.ArrowForward, "Sposta dopo") }

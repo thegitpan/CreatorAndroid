@@ -24,6 +24,16 @@ object DeviceDiagnostics {
             .put("model", Build.MODEL)
             .put("androidRelease", Build.VERSION.RELEASE)
             .put("sdk", Build.VERSION.SDK_INT)
+            .put("systemBuild", Build.DISPLAY)
+            .put("securityPatch", Build.VERSION.SECURITY_PATCH)
+            .put("cameraXVersion", BuildConfig.CAMERA_X_VERSION)
+            .put("media3Version", BuildConfig.MEDIA3_VERSION)
+            .put("application", JSONObject().put("package", context.packageName).apply {
+                runCatching { context.packageManager.getPackageInfo(context.packageName, 0) }.getOrNull()?.let { info ->
+                    put("versionName", info.versionName ?: JSONObject.NULL)
+                    put("versionCode", info.longVersionCode)
+                }
+            })
             .put("abis", JSONArray(Build.SUPPORTED_ABIS.toList()))
             .put("cameraAcceptance", "pending_physical_preview_and_saved_file")
             .put("requestedCapture", JSONObject().put("width", 1920).put("height", 1080).put("fps", 30).put("dynamicRange", "SDR"))

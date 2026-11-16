@@ -16,6 +16,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +30,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.setContent
 import it.panebarco.creator.domain.Project
+import it.panebarco.creator.domain.ProjectEditor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -82,6 +85,10 @@ private val CreatorColors = darkColorScheme(
                 title = { Column { Text(if (state.destination == Destination.LIBRARY) "Creator" else state.project?.title ?: "Creator", maxLines = 1); if (state.destination == Destination.LIBRARY) Text("I tuoi video, sul tuo dispositivo", style = MaterialTheme.typography.labelMedium) } },
                 navigationIcon = { if (state.destination != Destination.LIBRARY && state.destination != Destination.RECORDER) IconButton(onClick = { model.navigate(Destination.LIBRARY) }, modifier = Modifier.testTag("back")) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Progetti") } },
                 actions = {
+                    if (state.destination == Destination.EDITOR) state.project?.let { project ->
+                        IconButton(onClick = { model.edit(ProjectEditor::undo) }, enabled = !state.busy && project.canUndo, modifier = Modifier.testTag("undo")) { Icon(Icons.AutoMirrored.Filled.Undo, "Annulla modifica") }
+                        IconButton(onClick = { model.edit(ProjectEditor::redo) }, enabled = !state.busy && project.canRedo, modifier = Modifier.testTag("redo")) { Icon(Icons.AutoMirrored.Filled.Redo, "Ripristina modifica") }
+                    }
                     if (state.destination == Destination.LIBRARY) {
                         IconButton(onClick = model::diagnostics, modifier = Modifier.testTag("diagnostics")) { Icon(Icons.Default.Settings, "Diagnostica dispositivo") }
                         IconButton(onClick = { showAbout = true }) { Icon(Icons.Default.Info, "Informazioni e licenze") }

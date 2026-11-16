@@ -1,0 +1,41 @@
+{
+  "file": "negative-control-50ms.mp4",
+  "expected_us": [
+    500000,
+    1500000,
+    2500000,
+    3500000
+  ],
+  "video_us": [
+    500000,
+    1500000,
+    2500000,
+    3500000
+  ],
+  "audio_us": [
+    549667,
+    1549667,
+    2549667,
+    3549667
+  ],
+  "tolerance_us": 33334,
+  "audio_minus_video_us": [
+    49667,
+    49667,
+    49667,
+    49667
+  ],
+  "video_minus_expected_us": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "audio_minus_expected_us": [
+    49667,
+    49667,
+    49667,
+    49667
+  ],
+  "pass": false
+}

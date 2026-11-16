@@ -1,37 +1,35 @@
-# Implementation audit log
+# Audit dell'implementazione
 
-Root review accompanies the three Sol 6.1 Max writers. Findings are closed only with the relevant final code and verification evidence. Baseline before Android implementation: `c7fc76e` (upstream reference `faf1815e`). Physical camera acceptance is separate from emulator/build checks.
+Il coordinatore ha revisionato il lavoro dei tre autori Sol 6.1 Max, riprodotto i problemi e richiesto correzioni. Baseline precedente all'implementazione Android: `c7fc76e`; upstream `faf1815e`. Tutti i rilievi sotto sono chiusi nel codice finale e nelle verifiche descritte in [EVIDENCE.md](EVIDENCE.md). L'accettazione della camera fisica resta aperta.
 
-| ID | Finding and requirement | Owner | Status |
-| --- | --- | --- | --- |
-| R1 | Export must not replace existing output, including zero-byte files or a concurrent engine's result | media_engine | Initial hardlink solution passes JVM but fails Android SELinux; exclusive-create copy/fsync correction in progress |
-| R2 | Export validation must check tracks, duration and canvas, not just file existence | media_engine | Correction requested; fixture instrumentation pending |
-| R3 | A valid manifest with missing media must preserve its exact edit/history, not trigger rollback to an older manifest | domain_data | Correction in progress |
-| R4 | Stale edits constructed later in wall-clock time must not overwrite a newer divergent edit | domain_data | Persisted revision ancestry approved; tests pending |
-| R5 | Failure after moving a finalized source must be recoverable through the app, exactly once | domain_data/app_ui | Durable commit receipt and pending-media recovery in progress |
-| R6 | Warning persistence failure on a full disk must not hide other valid projects | domain_data | In-memory warning fallback requested |
-| R7 | Full-history backup revisions need bounded metadata retention; preserve original media and damaged evidence | domain_data | Five valid manifest revisions requested |
-| R8 | Async source resolution/player errors must be visible and must not crash Compose | app_ui | Active-source-only resolution and player listener correction requested |
-| R9 | Foreground service start/quota/receipt failures require a final visible job state | app_ui | Error-path corrections in progress |
-| R10 | Export receipt must identify its project revision so an older render is distinguishable after edits | app_ui | Revision linkage in progress |
-| R11 | Camera REC state begins on actual Start event; closing capture may yield usable interrupted output | media_engine | Starting flag added; Finalize classification under review |
-| R12 | Manifest writer and reader limits must agree; rejecting an oversized edit must preserve the prior readable project | domain_data | Complexity guard before save/export and boundary regression requested |
-| R13 | Backup publication must not replace a concurrently created destination | domain_data | Initial hardlink solution fails Android SELinux; exclusive-create copy/fsync correction requested |
-| R14 | Back during recording preparation must not start an unwanted take | app_ui | Preparation cancellation/navigation correction requested |
-| R15 | Stale asynchronous export receipts must not overwrite a newer job; notification failure must not discard a completed video | app_ui | Race and success-path audit requested |
-| R16 | Picker result must retain its target project across process death | app_ui | Persist explicit import target, then restore project/editor after import |
-| R17 | ZIP directory entries must not bypass expanded-size limits through unbounded closeEntry draining | domain_data | Independent audit reproduced 256 MiB hidden in a compressed Sources/ directory entry; reject payload requested |
+| ID | Rilievo | Correzione e verifica |
+| --- | --- | --- |
+| R1 | Export che potrebbe sostituire un file esistente o concorrente | Creazione esclusiva, nessuna apertura per sovrascrittura, pulizia solo del file posseduto; test JVM e Android, incluso file vuoto e race fra publisher. |
+| R2 | Output validato soltanto tramite esistenza | Controlli di tracce, durata e geometria visualizzata; fixture strumentali e analisi indipendente del file salvato. |
+| R3 | Media mancante provoca rollback della cronologia | Manifest valido conservato esattamente; avviso esplicito, senza ripristino di una vecchia modifica. Regression test archivio passato. |
+| R4 | Modifica divergente obsoleta con timestamp più recente | Identità e ascendenza delle revisioni persistite; rifiuto verificato anche con orologio successivo. |
+| R5 | Arresto dopo spostamento della sorgente perde l'aggiunta | Ricevute durevoli, replay una volta sola e recupero in app; test sui checkpoint di interruzione. |
+| R6 | Impossibilità di salvare un avviso nasconde progetti validi | Avviso mantenuto in memoria e isolamento del progetto difettoso; test di scrittura negata. |
+| R7 | Revisioni complete senza limite di ritenzione | Cinque revisioni valide conservate; originali e prove di corruzione preservati. |
+| R8 | Errori asincroni del player o delle sorgenti possono terminare la UI | Risoluzione delle sole sorgenti attive e listener di errore visibile; prove dei flussi e input mancanti. |
+| R9 | Avvio/quota del servizio o ricevuta fallita lascia job ambiguo | Stato terminale visibile e tipo foreground corretto per API; export, annullamento e retry pubblici su Android. |
+| R10 | Export non collegato alla revisione montata | Ricevuta con job UUID e revisione congelata; risultato distinguibile dopo modifiche. |
+| R11 | REC anticipato e Finalize interrotto gestito come successo generico | REC sull'evento Start; classificazione dei soli errori recuperabili, probe e frame decodificato prima dell'aggiunta. Test unitari e CameraX reale su emulatore. |
+| R12 | Writer produce manifest oltre i limiti del reader | Limiti di complessità applicati prima della pubblicazione; il test conserva il progetto precedente leggibile. |
+| R13 | Backup può sovrascrivere una destinazione creata durante la copia | Pubblicazione esclusiva con sync e pulizia conservativa; collisioni, concorrenza e backup/ripristino testati. |
+| R14 | Back durante preparazione avvia una ripresa non desiderata | Annullamento della preparazione e controllo della navigazione, verificati nei flussi lifecycle. |
+| R15 | Ricevute asincrone obsolete sovrascrivono lavori nuovi; notifica fallita scarta export valido | Aggiornamenti limitati a job e revisione correnti, terminali protetti; notifiche best effort separate dall'output. |
+| R16 | Risultato picker perde il progetto destinatario dopo ricreazione | ID esplicito salvato in SavedStateHandle e ripristinato; test lifecycle passato. |
+| R17 | Payload nascosto in directory ZIP aggira limiti di espansione | Auditor indipendente ha riprodotto 256 MiB compressi in una voce directory; payload respinto senza drenaggio illimitato. Test di regressione passato. |
 
-## Android output publication decision
+L'audit indipendente Standards/Spec ha poi rilevato cinque ulteriori problemi, tutti corretti e ricontrollati: [REVIEW.md](REVIEW.md). La suite integrata finale comprende 58 test JVM e 18 test su emulatori, senza fallimenti o test saltati.
 
-The API36 emulator rejects `Files.createLink` in app storage with a SELinux `{ link }` denial. JVM hardlink success is insufficient evidence for Android. Export/backup publication therefore uses exclusive destination creation (`CREATE_NEW` / `O_EXCL`), copies the already completed temporary output, and syncs the owned file before reporting success. Existing destinations are never opened for replacement. Cancellation/error cleanup must verify ownership before deletion. A process kill during this last copy can leave an unreported private file; it is not a completed export, gallery item or shared URI. Project manifest replacement still uses atomic rename and retained revisions.
+## Pubblicazione dei file su Android
 
-## Verification observed so far
+L'emulatore API 36 rifiuta `Files.createLink` nell'archivio dell'app con un diniego SELinux. Il successo JVM dei hardlink non era sufficiente. Export e backup usano quindi creazione esclusiva (`CREATE_NEW` / `O_EXCL`), copia dal temporaneo completato e sincronizzazione del file posseduto prima del successo. Le destinazioni esistenti non vengono sostituite. La pulizia controlla l'identità del file; non elimina un eventuale sostituto creato da un altro processo.
 
-- Gradle 8.13 wrapper runs with JDK17.
-- `:domain:compileKotlin` passes.
-- `:media:compileDebugKotlin :domain:test` passes at intermediate code; nine domain tests passed.
-- Three initial output-publication tests passed; media timeline test fixtures initially violated UUID validation and are being corrected.
-- Dedicated API36 arm64 emulator `creator-android-api36`, serial `emulator-5580`, booted with emulated cameras. Other emulators/user data are excluded from tests.
+Un arresto del processo durante la copia finale può lasciare un file privato incompleto. Non è dichiarato un export completato, non è pubblicato in galleria e non è condiviso. Il manifest del progetto usa invece sostituzione atomica e revisioni conservate.
 
-These are intermediate checks, not final acceptance. The integrated APK and final code still require build, UI, media export, recovery and regression checks.
+## Limiti della chiusura
+
+Test ed audit non dimostrano assenza di ogni difetto. In particolare, il profilo effettivo del Samsung, qualità, A/V delle sue riprese, mirroring, blocchi fuoco/esposizione, temperatura e continuità nelle sessioni lunghe richiedono la prova fisica prevista da [SAMSUNG-ACCEPTANCE.md](SAMSUNG-ACCEPTANCE.md). Le prove locali API 36 non certificano tutte le versioni Android ammesse da `minSdk`.

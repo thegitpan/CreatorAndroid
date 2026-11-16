@@ -2,6 +2,8 @@
 
 Data: 16 novembre 2026. Destinatario: Fabrizio Panebarco. Dispositivo iniziale: il suo Samsung S26. Nome di lavoro interno: **Creator Android**, da sostituire prima della distribuzione pubblica.
 
+Nota di aggiornamento: questo documento conserva il piano iniziale e le sue ipotesi. Il fork e la prima app personale 0.1.0 sono stati successivamente realizzati; lo stato attuale è in [STATUS.md](STATUS.md), le prove in [EVIDENCE.md](EVIDENCE.md), le decisioni di implementazione in [CONTRACT.md](CONTRACT.md). In particolare, il formato effettivo usa microsecondi interi, il cambio camera avviene fra segmenti e l'accettazione fisica sul S26 resta aperta.
+
 L'obiettivo è una videocamera con montaggio rapido, utilizzabile offline sul telefono: registrare, continuare una ripresa in momenti diversi, correggere il montaggio ed esportare un video senza perdere gli originali. La prima consegna utile è un APK personale con questo percorso completo. Effetti avanzati, doppia camera e AI vengono aggiunti su una base già verificata.
 
 Il piano assume priorità equilibrata fra registrazione e montaggio essenziale. Le scelte di prodotto, i tempi e i criteri di accettazione qui indicati sono proposte; i fatti sulle API e sul repository sono accompagnati dalle relative fonti. La compatibilità effettiva del S26 deve ancora essere misurata.

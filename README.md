@@ -1,9 +1,10 @@
 # Creator Android
 
-Independent Android derivative of antirez’s YouRecApp, developed for personal use first. **Under active development; Samsung camera acceptance is pending.**
+Independent Android derivative of antirez’s YouRecApp, developed for personal use first. **Personal alpha 0.1.0 built and tested; physical Samsung camera acceptance is pending.**
 
 - Android source and build: [`android/`](android/)
 - Development status: [`android/docs/STATUS.md`](android/docs/STATUS.md)
+- Validation evidence and limits: [`android/docs/EVIDENCE.md`](android/docs/EVIDENCE.md)
 - Implementation plan: [`android/docs/PLAN.md`](android/docs/PLAN.md)
 - Original provenance and licenses: [`UPSTREAM.md`](UPSTREAM.md), [`LICENSE`](LICENSE)
 

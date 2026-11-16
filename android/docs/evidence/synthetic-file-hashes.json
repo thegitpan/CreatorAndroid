@@ -1,0 +1,6 @@
+{
+  "media-sync/baseline/sync-export.mp4": "a2e715d89764c5cc1d91df97e3df3524402c661e6197a108a230110a3d6595cd",
+  "media-sync/fixed/sync-export.mp4": "e12ac7d516737797033b38612e445fc1f842b8ef779e834df347108092ac72d1",
+  "media-sync/late-optimized/sync-export.mp4": "8c967ea5ca6021fe75eb8424496dc5805811e68bb93a94c0ecf0674567b84212",
+  "media-sync/negative-control-50ms.mp4": "6fe4b2b463d67c34978483bcbadc32c0357681c2fb402892e8e1b6ec737b3d2f"
+}

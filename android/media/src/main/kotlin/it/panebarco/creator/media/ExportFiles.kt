@@ -38,6 +38,7 @@ internal object ExportFiles {
         } catch (error: FileAlreadyExistsException) {
             throw IllegalArgumentException("Il file di destinazione esiste già. Scegli un nuovo nome.", error)
         }
+        var closeAttempted = false
         try {
             partial.inputStream().use { input ->
                 val buffer = ByteArray(128 * 1024)
@@ -51,12 +52,15 @@ internal object ExportFiles {
             checkCancellation()
             opened.sync()
             checkCancellation()
+            closeAttempted = true
+            opened.close()
             return opened.publication
         } catch (error: Throwable) {
-            opened.publication.deleteIfOwned()
+            if (!closeAttempted) {
+                try { opened.close() } catch (closeError: Throwable) { error.addSuppressed(closeError) }
+            }
+            try { opened.publication.deleteIfOwned() } catch (cleanupError: Throwable) { error.addSuppressed(cleanupError) }
             throw error
-        } finally {
-            opened.close()
         }
     }
 

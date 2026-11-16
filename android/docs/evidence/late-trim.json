@@ -1,0 +1,20 @@
+{
+  "diagnosticScenario": "late",
+  "exportElapsedMs": 1171,
+  "sourceDurationUs": 60000000,
+  "decodeStartUs": 57000000,
+  "expectedMarkersUs": [
+    149999
+  ],
+  "videoMarkersUs": [
+    150000
+  ],
+  "audioMarkersUs": [
+    180468
+  ],
+  "frameToleranceUs": 33334,
+  "expectedDurationUs": 1500000,
+  "prerollCancellationProgress": 1,
+  "prerollWarmupBeforeCancellationMs": 253,
+  "prerollCancellationLatencyMs": 73
+}

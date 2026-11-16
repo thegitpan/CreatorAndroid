@@ -1,0 +1,115 @@
+{
+  "evidence": "emulator_camera_pipeline_only",
+  "sdk": 36,
+  "cameraXVersion": "1.6.2",
+  "media3Version": "1.11.1",
+  "captures": [
+    {
+      "take": 1,
+      "durationUs": 1710900,
+      "width": 1280,
+      "height": 720,
+      "rotationDegrees": 90,
+      "tracks": [
+        {
+          "mime": "video/avc",
+          "width": 1280,
+          "height": 720,
+          "durationUs": 1710900,
+          "firstSampleTimeUs": 0
+        },
+        {
+          "mime": "audio/3gpp",
+          "sampleRateHz": 8000,
+          "channelCount": 1,
+          "durationUs": 1660000,
+          "firstSampleTimeUs": 28375
+        }
+      ]
+    },
+    {
+      "take": 2,
+      "durationUs": 1722300,
+      "width": 1280,
+      "height": 720,
+      "rotationDegrees": 90,
+      "tracks": [
+        {
+          "mime": "video/avc",
+          "width": 1280,
+          "height": 720,
+          "durationUs": 1722300,
+          "firstSampleTimeUs": 0
+        },
+        {
+          "mime": "audio/3gpp",
+          "sampleRateHz": 8000,
+          "channelCount": 1,
+          "durationUs": 1680000,
+          "firstSampleTimeUs": 49750
+        }
+      ]
+    },
+    {
+      "take": 3,
+      "durationUs": 1772300,
+      "width": 1280,
+      "height": 720,
+      "rotationDegrees": 90,
+      "tracks": [
+        {
+          "mime": "video/avc",
+          "width": 1280,
+          "height": 720,
+          "durationUs": 1772300,
+          "firstSampleTimeUs": 0
+        },
+        {
+          "mime": "audio/3gpp",
+          "sampleRateHz": 8000,
+          "channelCount": 1,
+          "durationUs": 1720000,
+          "firstSampleTimeUs": 12750
+        }
+      ]
+    }
+  ],
+  "expectedDurationUs": 5205500,
+  "outputDurationUs": 5205500,
+  "durationErrorUs": 0,
+  "outputWidth": 1920,
+  "outputHeight": 1080,
+  "outputRotationDegrees": 90,
+  "displayOutputWidth": 1080,
+  "displayOutputHeight": 1920,
+  "outputTracks": [
+    {
+      "mime": "audio/mp4a-latm",
+      "sampleRateHz": 48000,
+      "channelCount": 2,
+      "bitRate": 131072,
+      "durationUs": 5264800,
+      "firstSampleTimeUs": -12000
+    },
+    {
+      "mime": "video/avc",
+      "width": 1920,
+      "height": 1080,
+      "durationUs": 5205500,
+      "firstSampleTimeUs": 0
+    }
+  ],
+  "outputBytes": 1076844,
+  "testResult": "passed",
+  "verified": [
+    "public CameraX A/pause/B/reopen/C workflow",
+    "public editor foreground export",
+    "H264/AAC tracks with 48kHz output audio",
+    "display canvas 1080x1920 honoring MP4 rotation",
+    "video duration within 100000 microseconds; observed exact",
+    "decoded image at midpoint of all three exported segments",
+    "AAC waveform decoder completed with finite values",
+    "all three original SHA-256 values unchanged after export",
+    "project clips unchanged and export receipt revision matched"
+  ]
+}

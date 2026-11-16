@@ -1,0 +1,55 @@
+{
+  "date": "2026-11-16",
+  "environment": "Android API36 arm64 emulators; JDK17",
+  "results": [
+    {
+      "module": "domain",
+      "suite": "JVM",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "data",
+      "suite": "JVM",
+      "tests": 32,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "media",
+      "suite": "JVM",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "app",
+      "suite": "JVM",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "media",
+      "suite": "device",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "app",
+      "suite": "device",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "physicalSamsungAcceptance": "pending"
+}

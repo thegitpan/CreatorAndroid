@@ -42,10 +42,19 @@ data class RepositoryWarning(val projectId: String, val message: String)
 internal enum class SaveCheckpoint {
     RECEIPT_SYNCED, SOURCE_MOVED, REVISION_SYNCED, BEFORE_MANIFEST_REPLACE, MANIFEST_REPLACED, BEFORE_ARCHIVE_PUBLISH,
     ARCHIVE_DESTINATION_CREATED, ARCHIVE_COPYING, ARCHIVE_COPY_CLOSED,
+    BEFORE_PENDING_ORIGIN_WRITE, PENDING_ORIGIN_SYNCED,
 }
 
 @Serializable
 private data class SourceCommitReceipt(val source: SourceAsset, val stagedName: String, val recording: Boolean)
+
+@Serializable
+private data class PendingMediaOriginReceipt(
+    val schemaVersion: Int,
+    val projectId: String,
+    val stagedName: String,
+    val recording: Boolean,
+)
 
 /**
  * Synchronous, process/thread-serialized storage. Call from Dispatchers.IO.
@@ -70,10 +79,12 @@ class ProjectRepository internal constructor(
                 if (directory.name.matches(UUID_PATTERN)) {
                     try {
                         result += loadUnlocked(directory.name)
+                    } catch (_: UnsupportedProjectSchemaException) {
+                        warnUnlocked(directory.name, "Questo progetto richiede una versione diversa di Creator. Aggiorna l'app prima di aprirlo; i dati sono conservati.")
                     } catch (error: IOException) {
-                        warnUnlocked(directory.name, "Impossibile aprire il progetto: ${error.message.orEmpty()}")
+                        warnUnlocked(directory.name, "Impossibile aprire un progetto. I dati sono conservati: verifica il backup e lo spazio disponibile.")
                     } catch (error: IllegalArgumentException) {
-                        warnUnlocked(directory.name, "Progetto non valido: ${error.message.orEmpty()}")
+                        warnUnlocked(directory.name, "Un progetto non è valido. I dati sono conservati: prova a ripristinare un backup.")
                     }
                 } else {
                     warnUnlocked(INVENTORY_WARNING_ID, "Una cartella della libreria ha un nome non valido; i suoi dati sono conservati.")
@@ -144,15 +155,25 @@ class ProjectRepository internal constructor(
         memoryWarnings.values.toList()
     }
 
-    fun stageFile(projectId: String, extension: String = "mp4"): File = locked {
+    fun stageFile(projectId: String, extension: String = "mp4", recording: Boolean? = null): File = locked {
         checkId(projectId)
         loadUnlocked(projectId)
         if (isTrashedUnlocked(projectId)) throw IOException("Ripristina il progetto prima di aggiungere video.")
         val suffix = extension.lowercase(Locale.ROOT)
         require(suffix.matches(EXTENSION_PATTERN)) { "Estensione del video non valida." }
-        val pending = ensureDirectory(child(locateProject(projectId), PENDING))
+        val directory = locateProject(projectId)
+        val pending = ensureDirectory(child(directory, PENDING))
         val file = child(pending, "${UUID.randomUUID()}.$suffix")
-        FileOutputStream(file).use { it.fd.sync() }
+        if (recording != null) {
+            val origins = ensureDirectory(child(directory, PENDING_ORIGINS))
+            val receipt = PendingMediaOriginReceipt(PENDING_ORIGIN_SCHEMA, projectId, file.name, recording)
+            checkpoint(SaveCheckpoint.BEFORE_PENDING_ORIGIN_WRITE)
+            atomicWrite(child(origins, "${file.name}.json"), json.encodeToString(receipt).toByteArray(), pending)
+            syncDirectory(directory) // Persist a newly created pending-origins directory entry as well.
+            checkpoint(SaveCheckpoint.PENDING_ORIGIN_SYNCED)
+        }
+        // No caller can write media until the origin sidecar has been published and synced.
+        FileChannel.open(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE).use { it.force(true) }
         syncDirectory(pending)
         file
     }
@@ -163,17 +184,23 @@ class ProjectRepository internal constructor(
         pendingMediaFilesUnlocked(locateProject(projectId))
     }
 
+    /** null means legacy or unverifiable origin; recover conservatively as an undoable import. */
+    fun pendingMediaOrigin(projectId: String, file: File): Boolean? = locked {
+        val directory = locateProject(projectId)
+        checkedPendingFile(directory, file, allowEmpty = true)
+        readPendingOriginUnlocked(directory, projectId, file.name)?.recording
+    }
+
     fun commitSource(projectId: String, staged: File, metadata: SourceAsset, recording: Boolean): Project = locked {
         val project = loadUnlocked(projectId, checkPending = false)
         if (isTrashedUnlocked(projectId)) throw IOException("Ripristina il progetto prima di aggiungere video.")
         ProjectEditor.validateMediaMetadata(metadata)
         val directory = locateProject(projectId)
         val pending = child(directory, PENDING)
-        rejectSymlink(pending)
-        rejectSymlink(staged)
-        if (!staged.name.matches(STAGED_MEDIA_PATTERN) || staged.canonicalFile.parentFile != pending.canonicalFile ||
-            !staged.isFile || staged.length() <= 0L) {
-            throw IOException("File temporaneo non valido. Importa o registra nuovamente il video.")
+        checkedPendingFile(directory, staged, allowEmpty = false)
+        val stagedOrigin = readPendingOriginUnlocked(directory, projectId, staged.name)?.recording
+        if (stagedOrigin != null && stagedOrigin != recording) {
+            throw IOException("Il tipo del video temporaneo non corrisponde all'operazione. Riapri Originali e usa Recupera video.")
         }
         val extension = staged.extension.lowercase(Locale.ROOT)
         require(extension.matches(EXTENSION_PATTERN)) { "Estensione del video non valida." }
@@ -197,6 +224,7 @@ class ProjectRepository internal constructor(
         // A failure after the move intentionally leaves a recoverable original in Sources.
         verifySaveAgainstCurrent(next, project, directory, verifiedNewSources = setOf(source.id))
         writeManifestUnlocked(directory, next)
+        removePendingOriginUnlocked(directory, projectId, staged.name, recording)
         Files.delete(receiptFile.toPath())
         syncDirectory(receipts)
         next
@@ -368,6 +396,48 @@ class ProjectRepository internal constructor(
         }?.sortedBy { it.name } ?: emptyList()
     }
 
+    private fun checkedPendingFile(directory: File, file: File, allowEmpty: Boolean) {
+        val pending = child(directory, PENDING)
+        rejectSymlink(pending)
+        rejectSymlink(file)
+        if (!file.name.matches(STAGED_MEDIA_PATTERN) || file.canonicalFile.parentFile != pending.canonicalFile ||
+            !file.isFile || (!allowEmpty && file.length() <= 0L)) {
+            throw IOException("File temporaneo non valido. Importa o registra nuovamente il video.")
+        }
+    }
+
+    private fun readPendingOriginUnlocked(directory: File, projectId: String, stagedName: String): PendingMediaOriginReceipt? {
+        try {
+            val origins = child(directory, PENDING_ORIGINS)
+            rejectSymlink(origins)
+            val file = child(origins, "$stagedName.json")
+            if (!Files.exists(file.toPath(), LinkOption.NOFOLLOW_LINKS)) return null
+            val text = readLimited(file, MAX_RECEIPT_BYTES)
+            validateJsonComplexity(text)
+            val origin = json.decodeFromString<PendingMediaOriginReceipt>(text)
+            if (origin.schemaVersion != PENDING_ORIGIN_SCHEMA || origin.projectId != projectId ||
+                origin.stagedName != stagedName || !origin.stagedName.matches(STAGED_MEDIA_PATTERN)) {
+                throw IOException("Origine del video temporaneo non verificabile.")
+            }
+            return origin
+        } catch (_: Exception) {
+            warnUnlocked(projectId, "L'origine di un video temporaneo non è verificabile. Il file è conservato: recuperalo come video importato per mantenere Annulla e Ripristina.")
+            return null
+        }
+    }
+
+    private fun removePendingOriginUnlocked(directory: File, projectId: String, stagedName: String, recording: Boolean) {
+        val origin = readPendingOriginUnlocked(directory, projectId, stagedName) ?: return
+        if (origin.recording != recording) return // Preserve conflicting metadata for inspection.
+        try {
+            val origins = child(directory, PENDING_ORIGINS)
+            Files.deleteIfExists(child(origins, "$stagedName.json").toPath())
+            syncDirectory(origins)
+        } catch (_: IOException) {
+            warnUnlocked(projectId, "Il video è salvato; alcuni metadati temporanei sono conservati. Verifica lo spazio disponibile prima della prossima registrazione.")
+        }
+    }
+
     private fun replayReceiptsUnlocked(directory: File, initial: Project): Project {
         val transactions = child(directory, TRANSACTIONS)
         rejectSymlink(transactions)
@@ -406,6 +476,7 @@ class ProjectRepository internal constructor(
                     writeManifestUnlocked(directory, next)
                     project = next
                 }
+                removePendingOriginUnlocked(directory, project.id, receipt.stagedName, receipt.recording)
                 Files.delete(receiptFile.toPath())
                 syncDirectory(transactions)
                 warnUnlocked(project.id, "Recuperato un video dopo un salvataggio interrotto. Controlla il montaggio prima dell'export.")
@@ -415,7 +486,7 @@ class ProjectRepository internal constructor(
                     val saved = readProject(child(directory, MANIFEST))
                     if (saved.id == project.id) project = saved
                 } catch (_: Exception) { /* Keep the last validated state. */ }
-                warnUnlocked(project.id, "Acquisizione interrotta conservata ma non recuperabile automaticamente: ${error.message.orEmpty()}")
+                warnUnlocked(project.id, "Un video interrotto è conservato ma non è stato recuperato automaticamente. Apri Originali e scegli Recupera video interrotti; verifica anche lo spazio disponibile.")
             }
         }
         return project
@@ -797,6 +868,8 @@ class ProjectRepository internal constructor(
         private const val WARNINGS = "warnings"
         private const val INCOMING = "incoming"
         private const val TRANSACTIONS = "transactions"
+        private const val PENDING_ORIGINS = "pending-origins"
+        private const val PENDING_ORIGIN_SCHEMA = 1
         private const val MANIFEST = "manifest.json"
         private const val RETAINED_REVISIONS = 5
         private const val MAX_RECEIPT_BYTES = 64L * 1024

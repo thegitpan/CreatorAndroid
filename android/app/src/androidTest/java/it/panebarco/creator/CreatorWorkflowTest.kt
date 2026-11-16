@@ -117,7 +117,7 @@ class CreatorWorkflowTest {
         scenario?.recreate()
         idle()
         click("edit_${original.id}")
-        compose.onNodeWithTag("redo").performScrollTo().assertIsEnabled()
+        compose.onNodeWithTag("redo").assertIsEnabled()
         assertEquals(3, repository.load(original.id).clips.size)
         assertEquals(2, repository.load(original.id).sources.size)
     }
@@ -189,6 +189,58 @@ class CreatorWorkflowTest {
             assertEquals(original.clips, repository.load(original.id).clips)
             original.sources.forEach { source -> assertEquals(hashes[source.id], sha(repository.sourceFile(original.id, source.id).readBytes())) }
         } finally { if (uri != null) app.contentResolver.delete(uri, null, null) }
+    }
+
+    @Test fun splitUsesThePlayheadInsideAnotherClipWithoutChangingSelection() {
+        val original = seed()
+        launch()
+        click("edit_${original.id}")
+        click("clip_0")
+        compose.onNodeWithTag("timeline_scrubber").performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(.75f) }
+        compose.onNodeWithTag("selected_clip").assertTextEquals("Clip 1 selezionata")
+        compose.onNodeWithTag("split").performScrollTo().assertIsEnabled().performClick()
+        waitProject(original.id) { it.clips.size == 3 }
+        val split = repository.load(original.id)
+        val expectedSourceTime = original.clips[1].sourceStartUs + original.durationUs * 3 / 4 - original.clips[0].durationUs
+        assertEquals(original.clips[0], split.clips[0])
+        assertEquals(original.clips[1].sourceId, split.clips[1].sourceId)
+        assertEquals(original.clips[1].sourceId, split.clips[2].sourceId)
+        assertEquals(expectedSourceTime, split.clips[1].sourceEndUs)
+        assertEquals(expectedSourceTime, split.clips[2].sourceStartUs)
+        click("undo")
+        waitProject(original.id) { it.clips == original.clips }
+    }
+
+    @Test fun exportReservationBlocksAllPublicCameraEntryPointsUntilReleased() {
+        val original = seed()
+        val token = MediaWorkCoordinator.reserveExport()
+        val job = ExportJobs.begin(original.id, token)
+        launch()
+        try {
+            click("record_${original.id}")
+            compose.onNodeWithText(MediaWorkCoordinator.WAIT_FOR_EXPORT).assertIsDisplayed()
+            compose.onNodeWithText("Ho capito").performClick()
+            click("new_recording")
+            compose.onNodeWithTag("project_name").performTextInput("QA must not be created")
+            click("confirm_name")
+            compose.onNodeWithText(MediaWorkCoordinator.WAIT_FOR_EXPORT).assertIsDisplayed()
+            assertFalse(repository.listProjects().any { it.title == "QA must not be created" })
+            compose.onNodeWithText("Ho capito").performClick()
+            click("edit_${original.id}")
+            click("continue_recording")
+            compose.onNodeWithText(MediaWorkCoordinator.WAIT_FOR_EXPORT).assertIsDisplayed()
+            compose.onAllNodesWithTag("camera_preview").assertCountEquals(0)
+            compose.onNodeWithText("Ho capito").performClick()
+        } finally {
+            MediaWorkCoordinator.releaseExport(token)
+            kotlinx.coroutines.runBlocking { ExportJobs.publish(app, job.copy(phase = ExportPhase.CANCELED)) }
+        }
+        scenario?.onActivity { activity ->
+            val model = androidx.lifecycle.ViewModelProvider(activity)[CreatorModel::class.java]
+            model.navigate(Destination.RECORDER)
+            assertEquals(Destination.RECORDER, model.state.value.destination)
+            model.navigate(Destination.EDITOR)
+        }
     }
 
     private fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }

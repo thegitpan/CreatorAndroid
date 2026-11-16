@@ -10,6 +10,6 @@ plugins {
 val generateMediaFixtures by tasks.registering(Exec::class) {
     val output = layout.buildDirectory.dir("generated/androidTestAssets")
     inputs.file("scripts/generate-fixtures.sh")
-    outputs.files(output.map { it.file("landscape-tone.mp4") }, output.map { it.file("portrait-silent.mp4") }, output.map { it.file("rotated-tone.mp4") }, output.map { it.file("sync-markers.mp4") })
+    outputs.files(output.map { it.file("landscape-tone.mp4") }, output.map { it.file("portrait-silent.mp4") }, output.map { it.file("rotated-tone.mp4") }, output.map { it.file("sync-markers.mp4") }, output.map { it.file("sync-markers-long.mp4") })
     commandLine("bash", "scripts/generate-fixtures.sh", output.get().asFile.absolutePath)
 }

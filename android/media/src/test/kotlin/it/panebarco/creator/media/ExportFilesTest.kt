@@ -92,4 +92,30 @@ class ExportFilesTest {
         } finally { dir.deleteRecursively() }
     }
 
+    @Test fun closeFailureRemovesOwnedOutputAndPreservesPrimaryFailure() {
+        val dir = Files.createTempDirectory("creator-publish-close").toFile()
+        try {
+            val partial = dir.resolve("partial.mp4").apply { writeText("completed-render") }
+            val output = dir.resolve("output.mp4")
+            val failingClose = ExportFiles.Opener { destination ->
+                val delegate = jvmOpener.open(destination)
+                object : ExportFiles.ExclusiveOutput by delegate {
+                    override fun close() { delegate.close(); throw java.io.IOException("close failed") }
+                }
+            }
+            val failure = assertThrows(java.io.IOException::class.java) {
+                ExportFiles.publishNoReplace(partial, output, opener = failingClose)
+            }
+            assertEquals("close failed", failure.message)
+            assertFalse("A failed close must not leave a reported output", output.exists())
+            val cancelled = assertThrows(java.util.concurrent.CancellationException::class.java) {
+                ExportFiles.publishNoReplace(partial, output,
+                    checkCancellation = { throw java.util.concurrent.CancellationException("cancelled") }, opener = failingClose)
+            }
+            assertEquals("cancelled", cancelled.message)
+            assertEquals("close failed", cancelled.suppressed.single().message)
+            assertFalse(output.exists())
+        } finally { dir.deleteRecursively() }
+    }
+
 }

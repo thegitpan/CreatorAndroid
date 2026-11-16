@@ -1,0 +1,10 @@
+{
+  "result": "PASS",
+  "environment": "API 36 arm64 emulator; signed personal APK installed with adb install -r",
+  "files_compared": 5,
+  "originals_compared": 1,
+  "project_tree_sha256_before": "d9f3520e2875a504677146726f407c942a954bfa4e47c9e4613eedc768b740bf",
+  "project_tree_sha256_after": "d9f3520e2875a504677146726f407c942a954bfa4e47c9e4613eedc768b740bf",
+  "all_project_bytes_unchanged": true,
+  "physical_samsung_test": false
+}

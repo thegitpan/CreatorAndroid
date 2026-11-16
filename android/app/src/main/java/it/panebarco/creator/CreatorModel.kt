@@ -47,7 +47,7 @@ class CreatorModel(application: Application, private val saved: SavedStateHandle
             val destination = saved.get<String>("destination")?.let { runCatching { Destination.valueOf(it) }.getOrNull() } ?: Destination.LIBRARY
             if (id != null && destination != Destination.LIBRARY && destination != Destination.DIAGNOSTICS) {
                 val project = withContext(Dispatchers.IO) { if (repository.isInTrash(id)) null else repository.load(id) }
-                if (project != null) select(project, destination)
+                if (project != null) select(project, if (destination == Destination.RECORDER && !cameraEntryAllowed()) Destination.EDITOR else destination)
             }
         }
     }
@@ -57,13 +57,13 @@ class CreatorModel(application: Application, private val saved: SavedStateHandle
         mutable.value = mutable.value.copy(project = project, destination = destination)
     }
 
-    private fun perform(operation: suspend () -> Unit) {
+    private fun perform(context: AppOperation = AppOperation.LIBRARY, operation: suspend () -> Unit) {
         viewModelScope.launch {
             gate.withLock {
                 mutable.value = mutable.value.copy(busy = true, error = null)
                 try { operation() }
                 catch (e: CancellationException) { throw e }
-                catch (e: Exception) { mutable.value = mutable.value.copy(error = e.message ?: "Operazione non riuscita. Riprova.") }
+                catch (e: Exception) { mutable.value = mutable.value.copy(error = AppErrors.describe(e, context)) }
                 finally { mutable.value = mutable.value.copy(busy = false) }
             }
         }
@@ -82,54 +82,69 @@ class CreatorModel(application: Application, private val saved: SavedStateHandle
     fun clearError() { mutable.value = mutable.value.copy(error = null) }
     fun clearMessage() { mutable.value = mutable.value.copy(message = null) }
     fun reportError(message: String) { mutable.value = mutable.value.copy(error = message) }
-    fun navigate(destination: Destination) { saved["destination"] = destination.name; mutable.value = mutable.value.copy(destination = destination) }
-    fun create(title: String, record: Boolean = false) = perform {
-        val project = withContext(Dispatchers.IO) { repository.create(title.trim()) }
-        updateLists()
-        select(project, if (record) Destination.RECORDER else Destination.EDITOR)
+    private fun cameraEntryAllowed(): Boolean {
+        if (MediaWorkCoordinator.cameraAllowed() && ExportJobs.state.value.phase != ExportPhase.RUNNING) return true
+        reportError(MediaWorkCoordinator.WAIT_FOR_EXPORT)
+        return false
     }
-    fun open(id: String, destination: Destination = Destination.EDITOR) = perform {
-        val project = withContext(Dispatchers.IO) { repository.load(id) }
-        val warnings = withContext(Dispatchers.IO) { repository.recoveryWarnings().map { it.message }.distinct() }
-        select(project, destination)
-        mutable.value = mutable.value.copy(warnings = warnings)
+    fun navigate(destination: Destination) {
+        if (destination == Destination.RECORDER && !cameraEntryAllowed()) return
+        saved["destination"] = destination.name
+        mutable.value = mutable.value.copy(destination = destination)
     }
-    fun edit(transform: (Project) -> Project) = perform {
+    fun create(title: String, record: Boolean = false) {
+        if (record && !cameraEntryAllowed()) return
+        perform(AppOperation.CREATE_PROJECT) {
+            val project = withContext(Dispatchers.IO) { repository.create(title.trim()) }
+            updateLists()
+            select(project, if (record && cameraEntryAllowed()) Destination.RECORDER else Destination.EDITOR)
+        }
+    }
+    fun open(id: String, destination: Destination = Destination.EDITOR) {
+        if (destination == Destination.RECORDER && !cameraEntryAllowed()) return
+        perform(AppOperation.OPEN_PROJECT) {
+            val project = withContext(Dispatchers.IO) { repository.load(id) }
+            val warnings = withContext(Dispatchers.IO) { repository.recoveryWarnings().map { it.message }.distinct() }
+            select(project, if (destination == Destination.RECORDER && !cameraEntryAllowed()) Destination.EDITOR else destination)
+            mutable.value = mutable.value.copy(warnings = warnings)
+        }
+    }
+    fun edit(transform: (Project) -> Project) = perform(AppOperation.EDIT_PROJECT) {
         val id = mutable.value.project?.id ?: return@perform
         val project = withContext(Dispatchers.IO) {
             val fresh = repository.load(id)
-            transform(fresh).also { repository.save(it) }
+            AppErrors.domainChange { transform(fresh) }.also { repository.save(it) }
         }
         mutable.value = mutable.value.copy(project = project)
         updateLists()
     }
-    fun rename(id: String, title: String) = perform {
-        val renamed = withContext(Dispatchers.IO) { ProjectEditor.rename(repository.load(id), title.trim()).also(repository::save) }
+    fun rename(id: String, title: String) = perform(AppOperation.EDIT_PROJECT) {
+        val renamed = withContext(Dispatchers.IO) { repository.load(id).let { loaded -> AppErrors.domainChange { ProjectEditor.rename(loaded, title.trim()) } }.also(repository::save) }
         if (mutable.value.project?.id == id) mutable.value = mutable.value.copy(project = renamed)
         updateLists()
     }
-    fun trash(id: String) = perform {
+    fun trash(id: String) = perform(AppOperation.TRASH_PROJECT) {
         withContext(Dispatchers.IO) { repository.moveToTrash(id) }
         updateLists()
         if (mutable.value.project?.id == id) { saved["selectedProject"] = null; navigate(Destination.LIBRARY); mutable.value = mutable.value.copy(project = null) }
     }
-    fun restore(id: String) = perform {
+    fun restore(id: String) = perform(AppOperation.RESTORE_PROJECT) {
         withContext(Dispatchers.IO) { repository.restore(id) }
         updateLists()
         mutable.value = mutable.value.copy(message = "Progetto ripristinato con originali e cronologia.")
     }
-    fun importVideos(projectId: String, uris: List<Uri>) = perform {
+    fun importVideos(projectId: String, uris: List<Uri>) = perform(AppOperation.IMPORT_VIDEO) {
         val id = projectId
-        withContext(Dispatchers.IO) { require(!repository.isInTrash(id)) { "Il progetto è nel cestino. Ripristinalo prima di importare." }; repository.load(id) }
+        withContext(Dispatchers.IO) { if (repository.isInTrash(id)) throw UserFeedbackException("Il progetto è nel cestino. Ripristinalo prima di importare."); repository.load(id) }
         var saved: Project? = null
         var count = 0
         try {
             for (uri in uris) {
                 saved = withContext(Dispatchers.IO) {
-                    val staged = repository.stageFile(id, "mp4")
+                    val staged = repository.stageFile(id, "mp4", recording = false)
                     try {
                         app.contentResolver.openInputStream(uri).use { input ->
-                            requireNotNull(input) { "Il provider non ha aperto il video. Scaricalo sul dispositivo e riprova." }
+                            if (input == null) throw UserFeedbackException("Il provider non ha aperto il video. Scaricalo sul dispositivo e selezionalo di nuovo.")
                             staged.outputStream().use { input.copyTo(it) }
                         }
                         val metadata = MediaProbe.inspect(staged)
@@ -145,15 +160,14 @@ class CreatorModel(application: Application, private val saved: SavedStateHandle
         } finally { updateLists() }
         mutable.value = mutable.value.copy(message = "$count video importati; gli originali sono nel progetto.")
     }
-    suspend fun prepareRecording(projectId: String): File = withContext(Dispatchers.IO) { repository.stageFile(projectId, "mp4") }
-    fun finalizeRecording(projectId: String, result: Result<File>) = perform {
+    suspend fun prepareRecording(projectId: String): File = withContext(Dispatchers.IO) { repository.stageFile(projectId, "mp4", recording = true) }
+    fun finalizeRecording(projectId: String, result: Result<File>) = perform(AppOperation.SAVE_RECORDING) {
         val file = result.getOrThrow()
         val project = withContext(Dispatchers.IO) { repository.commitSource(projectId, file, MediaProbe.inspect(file), recording = true) }
         if (mutable.value.project?.id == projectId) mutable.value = mutable.value.copy(project = project)
         updateLists()
-        mutable.value = mutable.value.copy(message = "Ripresa salvata. Puoi continuare ora o in seguito.")
     }
-    fun exportArchive(uri: Uri, projectId: String) = perform {
+    fun exportArchive(uri: Uri, projectId: String) = perform(AppOperation.EXPORT_BACKUP) {
         withContext(Dispatchers.IO) {
             val temporary = File(app.cacheDir, "backup-${UUID.randomUUID()}.zip")
             try {
@@ -166,7 +180,7 @@ class CreatorModel(application: Application, private val saved: SavedStateHandle
         }
         mutable.value = mutable.value.copy(message = "Backup salvato con originali e cronologia.")
     }
-    fun importArchive(uri: Uri) = perform {
+    fun importArchive(uri: Uri) = perform(AppOperation.IMPORT_BACKUP) {
         val project = withContext(Dispatchers.IO) {
             val temporary = File(app.cacheDir, "restore-${UUID.randomUUID()}.zip")
             try {
@@ -181,23 +195,28 @@ class CreatorModel(application: Application, private val saved: SavedStateHandle
         select(project, Destination.EDITOR)
         mutable.value = mutable.value.copy(message = "Backup verificato e importato come nuovo progetto.")
     }
-    fun recoverPending(projectId: String) = perform {
+    fun recoverPending(projectId: String) = perform(AppOperation.RECOVER_VIDEO) {
         val files = withContext(Dispatchers.IO) { repository.pendingMediaFiles(projectId) }
         if (files.isEmpty()) { mutable.value = mutable.value.copy(message = "Nessuna ripresa interrotta da recuperare."); return@perform }
         var count = 0
         val failures = mutableListOf<String>()
         for (file in files) {
             try {
-                val project = withContext(Dispatchers.IO) { repository.commitSource(projectId, file, MediaProbe.inspect(file), recording = true) }
+                val project = withContext(Dispatchers.IO) {
+                    val metadata = MediaProbe.inspect(file)
+                    val frame = MediaProbe.thumbnail(file, 0, 64, 64) ?: throw UserFeedbackException("Il video interrotto non contiene fotogrammi decodificabili. Il file è conservato: prova un altro video o un backup.")
+                    frame.recycle()
+                    repository.commitSource(projectId, file, metadata, recording = repository.pendingMediaOrigin(projectId, file) ?: false)
+                }
                 if (mutable.value.project?.id == projectId) mutable.value = mutable.value.copy(project = project)
                 count++
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { failures += e.message ?: "File non ancora completo" }
+            catch (e: Exception) { failures += AppErrors.describe(e, AppOperation.RECOVER_VIDEO) }
         }
         updateLists()
-        mutable.value = mutable.value.copy(message = "$count riprese recuperate.", error = failures.takeIf { it.isNotEmpty() }?.let { "Alcuni file interrotti non sono riproducibili e sono stati conservati. ${it.joinToString("; ")}" })
+        mutable.value = mutable.value.copy(message = "$count video recuperati.", error = failures.takeIf { it.isNotEmpty() }?.let { "Alcuni video interrotti non sono stati recuperati e sono conservati. ${it.joinToString("; ")}" })
     }
-    fun diagnostics() = perform {
+    fun diagnostics() = perform(AppOperation.DIAGNOSTICS) {
         val report = withContext(Dispatchers.IO) { DeviceDiagnostics.collect(app) }
         mutable.value = mutable.value.copy(diagnostics = report, destination = Destination.DIAGNOSTICS)
     }

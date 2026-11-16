@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
     val scope = rememberCoroutineScope()
     var saving by remember { mutableStateOf(false) }
     var gallerySaved by remember(status.file) { mutableStateOf(false) }
-    val start = { runCatching { ExportService.start(context, project.id) }.onFailure { model.reportError("Impossibile avviare l’esportazione: ${it.message}") }; Unit }
+    val start = { runCatching { ExportService.start(context, project.id) }.onFailure { model.reportError(AppErrors.describe(it, AppOperation.EXPORT_START)) }; Unit }
     val notification = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { start() }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         val current = status.projectId == project.id
@@ -41,11 +41,12 @@ import kotlinx.coroutines.launch
                     saving = true
                     scope.launch {
                         try { saveExportToGallery(context, status.file, project.title); gallerySaved = true }
-                        catch (e: Exception) { model.reportError(e.message ?: "Salvataggio in galleria non riuscito.") }
+                        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                        catch (e: Exception) { model.reportError(AppErrors.describe(e, AppOperation.GALLERY)) }
                         finally { saving = false }
                     }
                 }, enabled = !saving && !gallerySaved, modifier = Modifier.weight(1f).testTag("save_gallery")) { Icon(Icons.Default.SaveAlt, null); Spacer(Modifier.width(6.dp)); Text(if (gallerySaved) "Salvato" else if (saving) "Salvataggio…" else "Galleria") }
-                OutlinedButton(onClick = { runCatching { shareExport(context, status.file) }.onFailure { model.reportError("Condivisione non disponibile: ${it.message}") } }, modifier = Modifier.weight(1f).testTag("share_export")) { Icon(Icons.Default.IosShare, null); Spacer(Modifier.width(6.dp)); Text("Condividi") }
+                OutlinedButton(onClick = { runCatching { shareExport(context, status.file) }.onFailure { model.reportError(AppErrors.describe(it, AppOperation.SHARE)) } }, modifier = Modifier.weight(1f).testTag("share_export")) { Icon(Icons.Default.IosShare, null); Spacer(Modifier.width(6.dp)); Text("Condividi") }
             }
         }
     }

@@ -183,7 +183,7 @@ class ProjectRepositoryTest {
             val caseRoot = File(temporary.root, phase.name)
             val normal = ProjectRepository(caseRoot)
             val project = normal.create("Interruzione $phase")
-            val staged = normal.stageFile(project.id).apply { writeText("video $phase") }
+            val staged = normal.stageFile(project.id, recording = true).apply { writeText("video $phase") }
             val failing = ProjectRepository(caseRoot) { if (it == phase) throw IOException("Injected $phase") }
             assertThrows(IOException::class.java) { failing.commitSource(project.id, staged, metadata(), recording = true) }
             val recovered = ProjectRepository(caseRoot).load(project.id)
@@ -194,13 +194,14 @@ class ProjectRepositoryTest {
             repeat(3) { assertEquals(recovered, normal.load(project.id)) }
             assertTrue(File(normal.projectDirectory(project.id), "transactions").listFiles()!!.isEmpty())
             assertTrue(normal.pendingMediaFiles(project.id).isEmpty())
+            assertTrue(File(normal.projectDirectory(project.id), "pending-origins").listFiles()!!.isEmpty())
         }
     }
 
     @Test fun `interrupted imported source recovery remains undoable and merges newest saved edits`() {
         val repository = repository()
         val project = repository.create("Import interrotto")
-        val staged = repository.stageFile(project.id).apply { writeText("import") }
+        val staged = repository.stageFile(project.id, recording = false).apply { writeText("import") }
         val failing = ProjectRepository(root) { if (it == SaveCheckpoint.SOURCE_MOVED) throw IOException("interrupted") }
         assertThrows(IOException::class.java) { failing.commitSource(project.id, staged, metadata(), recording = false) }
         val newer = ProjectEditor.setCanvas(ProjectEditor.rename(project, "Modifica più recente"), CanvasShape.LANDSCAPE)
@@ -240,6 +241,97 @@ class ProjectRepositoryTest {
         }
         assertTrue(good.exists())
         assertTrue(repository.recoveryWarnings().any { "Recupera video" in it.message })
+    }
+
+    @Test fun `restart after full staged copy preserves import undo and durable capture purpose`() {
+        listOf(false, true).forEach { recording ->
+            val caseRoot = File(temporary.root, "staged-origin-$recording")
+            val beforeCrash = ProjectRepository(caseRoot)
+            val project = beforeCrash.create("Origine $recording")
+            val staged = beforeCrash.stageFile(project.id, recording = recording)
+            assertEquals(recording, ProjectRepository(caseRoot).pendingMediaOrigin(project.id, staged))
+            staged.writeText("finalized media $recording")
+            val restarted = ProjectRepository(caseRoot)
+            val candidate = restarted.pendingMediaFiles(project.id).single()
+            val recovered = restarted.commitSource(project.id, candidate, metadata(),
+                recording = restarted.pendingMediaOrigin(project.id, candidate) ?: false)
+            assertEquals(recording, recovered.captureLedger.isNotEmpty())
+            assertEquals(!recording, recovered.canUndo)
+            val undone = ProjectEditor.undo(recovered)
+            assertEquals(recording, undone.clips.isNotEmpty())
+            assertEquals(recovered.sources, undone.sources)
+            assertEquals("finalized media $recording", restarted.sourceFile(project.id, recovered.sources.single().id).readText())
+            assertTrue(File(restarted.projectDirectory(project.id), "pending-origins").listFiles()!!.isEmpty())
+        }
+    }
+
+    @Test fun `legacy and malformed origin metadata recover conservatively as imports without enumerating sidecars`() {
+        val repository = repository()
+        val project = repository.create("Origine sconosciuta")
+        val legacy = repository.stageFile(project.id).apply { writeText("legacy video") }
+        val malformed = repository.stageFile(project.id, recording = true).apply { writeText("unknown purpose") }
+        val originFile = File(repository.projectDirectory(project.id), "pending-origins/${malformed.name}.json")
+        originFile.writeText("unfinished metadata")
+        File(legacy.parentFile, "${legacy.name}.json").writeText("a sidecar must never be media")
+        File(legacy.parentFile, "write-${UUID.randomUUID()}.tmp").writeText("{\"recording\":true}")
+        val restarted = repository()
+        assertEquals(setOf(legacy, malformed), restarted.pendingMediaFiles(project.id).toSet())
+        assertNull(restarted.pendingMediaOrigin(project.id, legacy))
+        assertNull(restarted.pendingMediaOrigin(project.id, malformed))
+        var recovered = restarted.commitSource(project.id, legacy, metadata(),
+            recording = restarted.pendingMediaOrigin(project.id, legacy) ?: false)
+        recovered = restarted.commitSource(project.id, malformed, metadata(),
+            recording = restarted.pendingMediaOrigin(project.id, malformed) ?: false)
+        assertTrue(recovered.captureLedger.isEmpty())
+        assertTrue(ProjectEditor.undo(ProjectEditor.undo(recovered)).clips.isEmpty())
+        assertTrue(originFile.exists()) // Preserve uncertain metadata, rather than deleting another receipt.
+        assertTrue(restarted.recoveryWarnings().any { "come video importato" in it.message })
+    }
+
+    @Test fun `origin metadata validates schema identity paths and known purpose before commit`() {
+        val repository = repository()
+        val project = repository.create("Origine verificata")
+        val staged = repository.stageFile(project.id, recording = false).apply { writeText("import") }
+        val origin = File(repository.projectDirectory(project.id), "pending-origins/${staged.name}.json")
+        val correct = origin.readText()
+        assertThrows(IOException::class.java) { repository.commitSource(project.id, staged, metadata(), recording = true) }
+        assertTrue(staged.exists())
+        assertTrue(repository.load(project.id).sources.isEmpty())
+        listOf(
+            correct.replace("\"schemaVersion\": 1", "\"schemaVersion\": 2"),
+            correct.replace(project.id, UUID.randomUUID().toString()),
+            correct.replace(staged.name, "../other.mp4"),
+        ).forEach { invalid ->
+            origin.writeText(invalid)
+            assertNull(repository().pendingMediaOrigin(project.id, staged))
+            assertEquals(invalid, origin.readText())
+        }
+        val outside = File(temporary.root, "${UUID.randomUUID()}.mp4").apply { writeText("outside") }
+        assertThrows(IOException::class.java) { repository.pendingMediaOrigin(project.id, outside) }
+        origin.writeText(correct)
+        val other = repository.stageFile(project.id, recording = true).apply { writeText("keep other metadata") }
+        val otherOrigin = File(origin.parentFile, "${other.name}.json")
+        val result = repository.commitSource(project.id, staged, metadata(), recording = false)
+        assertTrue(result.canUndo)
+        assertFalse(origin.exists())
+        assertTrue(otherOrigin.exists())
+        assertEquals(true, repository.pendingMediaOrigin(project.id, other))
+    }
+
+    @Test fun `origin-write interruptions never expose a media file with an incorrect purpose`() {
+        listOf(SaveCheckpoint.BEFORE_PENDING_ORIGIN_WRITE, SaveCheckpoint.PENDING_ORIGIN_SYNCED).forEach { phase ->
+            val caseRoot = File(temporary.root, "origin-interruption-$phase")
+            val normal = ProjectRepository(caseRoot)
+            val project = normal.create("Metadati interrotti")
+            val failing = ProjectRepository(caseRoot) { if (it == phase) throw IOException("origin write interrupted") }
+            assertThrows(IOException::class.java) { failing.stageFile(project.id, recording = false) }
+            val reopened = ProjectRepository(caseRoot)
+            assertTrue(reopened.pendingMediaFiles(project.id).isEmpty())
+            assertEquals(project, reopened.load(project.id))
+            assertTrue(File(reopened.projectDirectory(project.id), "pending").listFiles()!!.none { it.extension == "mp4" })
+            val legacy = reopened.stageFile(project.id).apply { writeText("unknown legacy media") }
+            assertNull(reopened.pendingMediaOrigin(project.id, legacy))
+        }
     }
 
     @Test fun `archive roundtrip preserves undo redo ledger originals and gives every import a new id`() {
@@ -498,7 +590,7 @@ class ProjectRepositoryTest {
         assertEquals(project, repository.load(project.id))
         assertTrue(receipt.exists())
         assertEquals("recuperabile manualmente", pending.readText())
-        assertTrue(repository.recoveryWarnings().any { "non recuperabile automaticamente" in it.message })
+        assertTrue(repository.recoveryWarnings().any { "Recupera video interrotti" in it.message })
     }
 
     @Test fun `symlink pending directory and non-UUID staged names are rejected`() {

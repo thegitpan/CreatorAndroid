@@ -2,7 +2,7 @@
 
 Applicazione Android indipendente ispirata al flusso di registrazione e montaggio di [YouRec](https://github.com/antirez/YouRecApp). Mantiene nel fork il codice iOS e la sua licenza; l'app Android usa Kotlin, Compose, CameraX e Media3. Nome e icona sono distinti dall'app originale.
 
-La versione personale 0.1 è in verifica. Build e test automatici non certificano la videocamera del Samsung S26: i risultati effettivamente ottenuti sono registrati in [STATUS.md](docs/STATUS.md) e [AUDIT.md](docs/AUDIT.md).
+La versione personale **0.1.0 è pronta per il test fisico sul Samsung S26**. Sono passati 76 test automatici, build, lint e verifica dell'aggiornamento dell'APK firmato. Build ed emulatori non certificano la videocamera del telefono: risultati e limiti sono registrati in [STATUS.md](docs/STATUS.md), [EVIDENCE.md](docs/EVIDENCE.md) e [AUDIT.md](docs/AUDIT.md).
 
 ## Flusso disponibile
 
@@ -19,7 +19,7 @@ L'elaborazione è locale. L'app non richiede account e non dichiara il permesso 
 Servono JDK 17 e Android SDK 36. Impostare `ANDROID_HOME` oppure `sdk.dir` nel file locale, ignorato da Git, `local.properties`. Dalla cartella `android`:
 
 ```sh
-./gradlew :domain:test :data:test :media:testDebugUnitTest :app:assembleDebug :app:lintDebug
+./gradlew :domain:test :data:test :media:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
 ```
 
 La build debug si chiama **Creator · test** e usa `it.panebarco.creator.debug`. L'identità personale stabile è `it.panebarco.creator`. Le due installazioni hanno archivi separati: i test strumentali possono installare/disinstallare la build di test senza rimuovere quella personale.
@@ -27,7 +27,7 @@ La build debug si chiama **Creator · test** e usa `it.panebarco.creator.debug`.
 Per i test strumentali serve anche `ffmpeg`. I campioni sintetici vengono generati automaticamente sotto `build/`, senza filmati personali o file binari versionati:
 
 ```sh
-ANDROID_SERIAL=emulator-5580 ./gradlew :app:connectedDebugAndroidTest :media:connectedDebugAndroidTest
+ANDROID_SERIAL=emulator-5580 ./gradlew -Pandroid.injected.device.serial=emulator-5580 :app:connectedDebugAndroidTest :media:connectedDebugAndroidTest
 ```
 
 Sostituire il seriale con quello del dispositivo di test dedicato. Eseguire i test dell'app e del motore in sequenza sullo stesso emulatore. I report sono nelle rispettive cartelle `build/reports/`.
@@ -55,4 +55,4 @@ L'APK prodotto si trova in `app/build/outputs/apk/release/`. L'installazione e g
 
 La pausa finalizza un segmento; Riprendi ne crea un altro. Il cambio camera durante REC, 4K/HDR, PiP, titoli, musica separata e sottotitoli non appartengono alla prima consegna personale. Una ripresa interrotta prima della finalizzazione può essere incompleta: l'app conserva il file e propone il recupero, ma non garantisce che un MP4 non finalizzato sia leggibile.
 
-Il piano completo è in [PLAN.md](docs/PLAN.md), le interfacce condivise in [CONTRACT.md](docs/CONTRACT.md) e la provenienza in [UPSTREAM.md](../UPSTREAM.md). La baseline CameraX è 1.6.2; la build diagnostica alternativa usa `-PcameraXVersion=1.7.0-rc02` e richiede verifiche dedicate. Le dipendenze sono fissate nei file Gradle.
+Il piano completo è in [PLAN.md](docs/PLAN.md), le interfacce condivise in [CONTRACT.md](docs/CONTRACT.md) e la provenienza in [UPSTREAM.md](../UPSTREAM.md). La baseline CameraX è 1.6.2; la build diagnostica alternativa usa `-PcameraXVersion=1.7.0-rc02`: la compilazione è verificata, il comportamento richiede prove dedicate. Le dipendenze sono fissate nei file Gradle e descritte in [DEPENDENCIES.md](docs/DEPENDENCIES.md).

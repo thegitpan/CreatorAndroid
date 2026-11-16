@@ -1,33 +1,47 @@
-# Development status
+# Stato della versione personale 0.1
 
-## Objective and authorization
+Aggiornato il 16 novembre 2026. Il percorso iniziale registrazione → montaggio → export è implementato e verificato con media sintetici ed emulatori. L'APK personale firmato è pronto per l'accettazione sul Samsung S26. **La verifica fisica è ancora da eseguire**; questo stato non certifica camera, microfono, temperatura o durata sul telefono.
 
-User requested autonomous implementation through the point requiring real Samsung S26 tests. Code is written by Sol 6.1 Max subagents; root coordinates, integrates, audits, requests corrections, builds and validates. Folder and public fork are authorized. The first delivery scope is the complete personal 0.1 workflow in PLAN.md, followed by independent improvements where possible. No real phone is connected yet.
+## Consegna
 
-## Baseline
+- Fork: <https://github.com/thegitpan/CreatorAndroid>, ramo predefinito `android/main`.
+- Upstream conservato: `antirez/YouRecApp`, commit `faf1815e82e1f2d5f03034a583363d3c3af464a2`.
+- App: **Creator 0.1.0**, versione interna 1, ID personale `it.panebarco.creator`.
+- APK locale: `android/outputs/Creator-0.1.0/Creator-0.1.0.apk`, escluso da Git insieme a build, campioni e segreti.
+- Firma personale stabile; chiave e credenziali fuori dal repository. La build di test usa l'ID separato `it.panebarco.creator.debug`.
+- Nessuna pubblicazione su Google Play o release pubblica dell'APK effettuata.
 
-- Upstream: antirez/YouRecApp at faf1815e82e1f2d5f03034a583363d3c3af464a2.
-- Fork: https://github.com/thegitpan/CreatorAndroid, branch android/main (local development).
-- Working application name Creator, ID it.panebarco.creator.
-- Build candidate: JDK17, AGP8.13.2, Gradle8.13, Kotlin2.2.21, SDK36; CameraX1.6.2 vs1.7.0-rc02 diagnostic override; Media3 1.11.1.
-- Android SDK available at /opt/homebrew/share/android-commandlinetools; use environment or ignored local.properties for this machine path.
+## Funzioni implementate
 
-## Active writers
+Registrazione a segmenti, pausa/ripresa e continuazione dopo riapertura; cambio camera fra segmenti; controlli di zoom e fuoco/esposizione secondo capacità. Progetti, importazione, editor sequenziale con miniature e waveform, scrub, split al playhead, trim, riordino, volume/muto, Undo/Redo persistenti. Formati 9:16 e 16:9 con fit, anteprima ed export MP4 H.264/AAC SDR, annullamento, galleria e condivisione. Originali immutabili, cestino ripristinabile, backup ZIP completo e recupero delle operazioni interrotte con avvisi espliciti.
 
-| Agent | Ownership |
+Camera e render pesanti si escludono prima dell'avvio. I temporanei conservano l'origine ripresa/importazione: recuperare un import non lo trasforma in una ripresa non annullabile. Le ricevute di export identificano lavoro e revisione del progetto.
+
+## Verifiche completate
+
+| Verifica finale | Risultato |
 | --- | --- |
-| domain_data | domain and filesystem data modules, invariants and recovery/archive tests |
-| media_engine | CameraX, media probe, capabilities, Media3 preview/export, media tests |
-| app_ui | Build setup, Compose application, foreground export and UI integration |
+| Test JVM: dominio, archivio, media, app | 58 superati |
+| Test su due emulatori dedicati API 36 arm64 | 18 superati |
+| Totale | **76 superati, 0 errori, 0 fallimenti, 0 saltati** |
+| Build debug, test APK, release firmata e lint | Superati |
+| Audit indipendenti Standards e Spec | 5 rilievi verificati e chiusi |
+| Confronto indipendente sync su sei marcatori | Scarto A/V massimo 30,011 ms, soglia 33,334 ms |
+| Aggiornamento in-place dell'APK personale | Originale, manifest e revisioni identici byte per byte |
+| Firma, allineamento APK/native library a 16 KiB | Verificati |
 
-## Decisions
+Il report [EVIDENCE.md](EVIDENCE.md) distingue misure, test, limiti e comandi ripetibili. [AUDIT.md](AUDIT.md) registra le correzioni; [REVIEW.md](REVIEW.md) contiene la chiusura dei due audit indipendenti. La pipeline GitHub è configurata per build e test API 35 x86_64; il suo risultato va letto separatamente dalle verifiche locali.
 
-- CONTRACT.md specifies initial interfaces; API changes require coordination.
-- Persist Long microseconds for the initial Media3-oriented implementation; this differs from upstream ticks. Boundary conversion and no cumulative drift require tests.
-- Pause finalizes a source segment. Camera switching during a segment remains experimental and hardware acceptance pending.
-- Recover validated retained manifests with a visible persistent warning; isolate corrupt projects without silently losing them.
-- Root owns Git commits and the final audit; agents report tests and limitations.
+## Decisioni finali rispetto al piano iniziale
 
-## Verification in progress
+- Tempo persistito in microsecondi interi `Long`, con conversioni e confini testati; non i 240.000 tick/s proposti inizialmente.
+- Pausa finalizza un segmento; cambio camera consentito fra segmenti. Nessuna promessa di cambio continuo durante REC.
+- CameraX 1.6.2 è la baseline; 1.7.0-rc02 rimane una variante diagnostica. Media3 1.11.1 serve anteprima ed export.
+- Il preroll di decodifica evita il disallineamento dei tagli AAC. Per AAC-LC si usa un punto di avvio calcolato dai campioni; codec non riconosciuti usano prudentemente la decodifica dall'inizio, che può costare tempo su clip lunghe.
+- Pubblicazione degli output con creazione esclusiva e sincronizzazione del file: i hardlink non funzionano nel percorso Android provato. Un arresto durante la copia finale può lasciare un file privato incompleto, mai dichiarato completato o condiviso.
 
-The integrated debug APK has compiled. Initial domain/data tests (30) and media unit tests (7) pass; subsequent audit fixes are still being added. Public UI instrumentation and synthetic-video exports are running on the dedicated API36 arm64 emulator. See AUDIT.md for findings and the eventual final evidence report. Physical S26 checks remain to be completed. An emulator never certifies S26 camera quality, synchronization or thermal behavior.
+## Prossimo passaggio necessario
+
+Seguire [SAMSUNG-ACCEPTANCE.md](SAMSUNG-ACCEPTANCE.md). Servono il telefono sbloccato, collegamento USB e autorizzazione Debug USB. Il coordinatore può poi installare, raccogliere diagnostica ed eseguire le prove tecniche; alcune riprese di una scena reale e del riferimento audio/visivo richiedono la presenza dell'utente.
+
+Il codice è stato scritto dagli agenti Sol 6.1 Max `domain_data`, `media_engine` e `app_ui`, revisionato da `audit_storage`, `audit_standards` e `audit_spec`, integrato e verificato dal coordinatore. Non risultano rilievi bloccanti aperti nel perimetro verificabile senza telefono. Titoli, musica separata, PiP, 4K/HDR e sottotitoli restano nelle fasi successive del [piano](PLAN.md).

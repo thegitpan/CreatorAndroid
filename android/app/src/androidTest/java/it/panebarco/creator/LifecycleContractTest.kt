@@ -52,6 +52,14 @@ class LifecycleContractTest {
             assertArrayEquals(bytes, repository.sourceFile(project.id, loaded.sources.single().id).readBytes())
         } finally { store.clear(); repository.moveToTrash(project.id) }
     }
+    @Test fun nativeErrnoCausesAreTranslatedAtTheAppBoundary() {
+        val noSpace = java.io.IOException("write /private/movie failed", android.system.ErrnoException("write", android.system.OsConstants.ENOSPC))
+        val denied = java.io.FileNotFoundException("open /private/movie denied").apply { initCause(android.system.ErrnoException("open", android.system.OsConstants.EACCES)) }
+        assertTrue(AppErrors.describe(noSpace, AppOperation.SAVE_RECORDING).contains("Libera spazio"))
+        assertTrue(AppErrors.describe(denied, AppOperation.IMPORT_VIDEO).contains("Impostazioni > App > Creator"))
+        assertFalse(AppErrors.describe(noSpace, AppOperation.SAVE_RECORDING).contains("/private"))
+    }
+
     private fun eventually(condition: () -> Boolean) {
         val end = SystemClock.elapsedRealtime() + 15_000
         while (!condition() && SystemClock.elapsedRealtime() < end) SystemClock.sleep(25)

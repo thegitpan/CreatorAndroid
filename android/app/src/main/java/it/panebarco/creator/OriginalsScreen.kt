@@ -51,10 +51,10 @@ import java.io.File
     LaunchedEffect(source.id) {
         try { file = withContext(Dispatchers.IO) { model.repository.sourceFile(projectId, source.id) } }
         catch (e: CancellationException) { throw e }
-        catch (e: Exception) { model.reportError("Originale non disponibile: ${e.message}. Verifica il backup."); onDismiss() }
+        catch (e: Exception) { model.reportError(AppErrors.describe(e, AppOperation.ORIGINAL)); onDismiss() }
     }
     DisposableEffect(file) {
-        val created = file?.let { target -> ExoPlayer.Builder(context).build().apply { setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(target))); prepare(); addListener(object : androidx.media3.common.Player.Listener { override fun onPlayerError(error: androidx.media3.common.PlaybackException) { model.reportError("L’originale non può essere riprodotto: ${error.message}") } }) } }
+        val created = file?.let { target -> ExoPlayer.Builder(context).build().apply { setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(target))); prepare(); addListener(object : androidx.media3.common.Player.Listener { override fun onPlayerError(error: androidx.media3.common.PlaybackException) { model.reportError(AppErrors.describe(error, AppOperation.PREVIEW)) } }) } }
         player = created
         onDispose { player = null; created?.release() }
     }

@@ -233,6 +233,137 @@ class MediaEngineInstrumentedTest {
         } finally { executor.shutdownNow() }
     }
 
+    @Test fun sharpMarkersStayWithinOneFrameAcrossNonKeyframeTrimsAndMultipleJoins() = runBlocking {
+        verifySharpMarkers(InstrumentationRegistry.getArguments().getString("syncScenario") ?: "trimmed-joins")
+    }
+
+    @Test fun lateTrimInSixtySecondSourceKeepsMarkerSyncAndReportsDecodeCost() = runBlocking {
+        verifySharpMarkers("late")
+    }
+
+    private suspend fun verifySharpMarkers(scenario: String) {
+        val directory = File(context.filesDir, "media-qa/${UUID.randomUUID()}").apply { mkdirs() }
+        val source = fixture(if (scenario == "late") "sync-markers-long.mp4" else "sync-markers.mp4", directory)
+        val metadata = MediaProbe.inspect(source)
+        var project = ProjectEditor.appendImport(Project.create("Sincronizzazione", CanvasShape.LANDSCAPE), metadata)
+        val diagnosticUntrimmed = scenario != "trimmed-joins"
+        for (timeUs in if (diagnosticUntrimmed) emptyList() else listOf(1_000_000L, 2_000_000L, 3_000_000L)) {
+            project = ProjectEditor.split(project, project.clips.last().id, timeUs)
+        }
+        val trims = listOf(350_001L to 1_850_001L, 1_700_003L to 3_700_003L,
+            100_007L to 1_100_007L, 2_200_011L to 3_200_011L)
+        (if (diagnosticUntrimmed) emptyList() else project.clips.map { it.id }.zip(trims)).forEach { (id, trim) ->
+            project = ProjectEditor.trim(project, id, trim.first, trim.second)
+        }
+        if (scenario == "late") project = ProjectEditor.trim(project, project.clips.single().id, 58_350_001L, 59_850_001L)
+        var timelineUs = 0L
+        val expected = project.clips.flatMap { clip ->
+            (if (scenario == "late") listOf(58_500_000L) else listOf(500_000L, 1_500_000L, 2_500_000L, 3_500_000L))
+                .filter { it >= clip.sourceStartUs && it + 66_667L <= clip.sourceEndUs }
+                .map { timelineUs + it - clip.sourceStartUs }
+                .also { timelineUs += clip.durationUs }
+        }
+        val output = File(directory, "sync-export.mp4")
+        val decodeStartUs = withContext(Dispatchers.IO) { DecoderPreroll.startUs(source, project.clips.first().sourceStartUs) }
+        if (scenario == "late") assertTrue("AAC-LC late trim must use an actual nearby GOP", decodeStartUs >= 55_000_000L)
+        val exportStartedMs = android.os.SystemClock.elapsedRealtime()
+        withTimeout(120_000L) { ProjectMediaEngine(context).export(project, { source }, output) {} }
+        val exportElapsedMs = android.os.SystemClock.elapsedRealtime() - exportStartedMs
+        val video = videoFlashStarts(output, expected)
+        val endUs = project.durationUs + 100_000L
+        val peaks = MediaProbe.waveform(output, 4096, 0L, endUs)
+        val audio = mutableListOf<Long>()
+        var previousActive = false
+        peaks.forEachIndexed { index, peak ->
+            val active = peak > .2f
+            if (active && !previousActive) audio += index * endUs / peaks.size
+            previousActive = active
+        }
+        val report = JSONObject().put("directory", directory.name)
+            .put("diagnosticScenario", scenario)
+            .put("exportElapsedMs", exportElapsedMs)
+            .put("sourceDurationUs", metadata.durationUs)
+            .put("decodeStartUs", decodeStartUs)
+            .put("expectedMarkersUs", org.json.JSONArray(expected))
+            .put("videoMarkersUs", org.json.JSONArray(video))
+            .put("audioMarkersUs", org.json.JSONArray(audio))
+            .put("frameToleranceUs", 33_334L)
+            .put("expectedDurationUs", project.durationUs)
+        File(context.filesDir, "media-qa/latest-sync.json").writeText(report.toString(2))
+        File(context.filesDir, "media-qa/latest-sync-$scenario.json").writeText(report.toString(2))
+        assertEquals("Video markers: $report", expected.size, video.size)
+        assertEquals("Audio markers: $report", expected.size, audio.size)
+        for (index in expected.indices) {
+            assertTrue("Video trim/join alignment: $report", abs(video[index] - expected[index]) <= 33_334L)
+            assertTrue("Audio/video marker alignment: $report", abs(audio[index] - video[index]) <= 33_334L)
+        }
+        if (scenario == "late") kotlinx.coroutines.coroutineScope {
+            val originalHash = MediaProbe.inspect(source).sha256
+            val cancelled = File(directory, "cancel-preroll.mp4")
+            val prefixReached = CompletableDeferred<Int>()
+            val cancelledJob = launch {
+                ProjectMediaEngine(context).export(project, { source }, cancelled) { progress ->
+                    if (progress > 0 && !prefixReached.isCompleted) prefixReached.complete(progress)
+                }
+            }
+            val cancelStartedMs = android.os.SystemClock.elapsedRealtime()
+            val observedProgress = withTimeout(10_000L) { prefixReached.await() }
+            val writtenBytes = directory.listFiles().orEmpty().filter { it.name.endsWith(".render.mp4") }.sumOf { it.length() }
+            val cancelRequestedMs = android.os.SystemClock.elapsedRealtime()
+            cancelledJob.cancelAndJoin()
+            assertEquals("Cancellation probe must occur before any rendered sample", 0L, writtenBytes)
+            assertFalse(cancelled.exists())
+            assertTrue(directory.listFiles().orEmpty().none { it.name.endsWith(".render.mp4") })
+            assertEquals(originalHash, MediaProbe.inspect(source).sha256)
+            report.put("prerollCancellationProgress", observedProgress)
+                .put("prerollWarmupBeforeCancellationMs", cancelRequestedMs - cancelStartedMs)
+                .put("prerollCancellationLatencyMs", android.os.SystemClock.elapsedRealtime() - cancelRequestedMs)
+            File(context.filesDir, "media-qa/latest-sync-$scenario.json").writeText(report.toString(2))
+        }
+    }
+
+    @Test fun previewPcmMarkersFollowSameTrimmedTimelineIncludingSeek() = runBlocking {
+        val directory = File(context.filesDir, "media-qa/${UUID.randomUUID()}").apply { mkdirs() }
+        val source = fixture("sync-markers.mp4", directory)
+        val metadata = MediaProbe.inspect(source)
+        var project = ProjectEditor.appendImport(Project.create("PCM anteprima", CanvasShape.LANDSCAPE), metadata)
+        for (time in listOf(1_000_000L, 2_000_000L, 3_000_000L)) project = ProjectEditor.split(project, project.clips.last().id, time)
+        val trims = listOf(350_001L to 1_850_001L, 1_700_003L to 3_700_003L, 100_007L to 1_100_007L, 2_200_011L to 3_200_011L)
+        project.clips.map { it.id }.zip(trims).forEach { (id, trim) -> project = ProjectEditor.trim(project, id, trim.first, trim.second) }
+        val expected = listOf(149_999L, 1_149_999L, 2_299_997L, 3_299_997L, 3_899_993L, 4_799_989L)
+        val sink = MarkerAudioSink(context)
+        val reader = ImageReader.newInstance(960, 540, PixelFormat.RGBA_8888, 3)
+        var player: Player? = null
+        val ended = CompletableDeferred<Unit>()
+        try {
+            withContext(Dispatchers.Main) {
+                reader.setOnImageAvailableListener({ it.acquireLatestImage()?.close() }, android.os.Handler(android.os.Looper.getMainLooper()))
+                player = ProjectMediaEngine(context).createPreviewWithAudioSink(project, { source }, sink).also {
+                    (it as androidx.media3.transformer.CompositionPlayer).setVideoSurface(reader.surface, androidx.media3.common.util.Size(960, 540))
+                    it.addListener(object : Player.Listener {
+                        override fun onPlaybackStateChanged(state: Int) { if (state == Player.STATE_ENDED) ended.complete(Unit) }
+                        override fun onPlayerError(error: PlaybackException) { ended.completeExceptionally(error) }
+                    })
+                    it.play()
+                }
+            }
+            withTimeout(30_000L) { ended.await() }
+            val markers = sink.markerTimesUs()
+            val report = JSONObject().put("expectedMarkersUs", org.json.JSONArray(expected)).put("previewAudioMarkersUs", org.json.JSONArray(markers))
+            File(context.filesDir, "media-qa/latest-preview-sync.json").writeText(report.toString(2))
+            assertEquals("Preview PCM markers: $report", expected.size, markers.size)
+            expected.zip(markers).forEach { (target, actual) -> assertTrue("Preview PCM timing: $report", abs(target - actual) <= 33_334L) }
+            // Seek to inside a clip, then play past its next pulse; the PCM sink reports global PTS.
+            sink.clearMarkers()
+            withContext(Dispatchers.Main) { player!!.seekTo(3_600L); player!!.play() }
+            delay(1_700L)
+            val afterSeek = sink.markerTimesUs()
+            assertTrue("Preview seek marker missing: $afterSeek", afterSeek.any { abs(it - 3_899_993L) <= 33_334L })
+        } finally {
+            withContext(Dispatchers.Main) { player?.release(); reader.close() }
+        }
+    }
+
     @Test fun diagnosticsContainCapabilitiesWithoutMediaPathsOrUniqueDeviceIdentifiers() {
         val report = DeviceDiagnostics.collect(context)
         val json = JSONObject(report)
@@ -242,6 +373,30 @@ class MediaEngineInstrumentedTest {
         assertFalse(report.contains(context.filesDir.absolutePath))
         assertFalse(json.has("serial"))
         assertFalse(json.has("androidId"))
+    }
+
+    private fun videoFlashStarts(file: File, expected: List<Long>): List<Long> {
+        val extractor = android.media.MediaExtractor()
+        val retriever = MediaMetadataRetriever()
+        try {
+            extractor.setDataSource(file.absolutePath)
+            val track = (0 until extractor.trackCount).first {
+                extractor.getTrackFormat(it).getString(android.media.MediaFormat.KEY_MIME)?.startsWith("video/") == true
+            }
+            extractor.selectTrack(track)
+            val times = mutableSetOf<Long>()
+            while (extractor.sampleTime >= 0L) {
+                val time = extractor.sampleTime
+                if (expected.any { abs(it - time) <= 120_000L }) times += time
+                extractor.advance()
+            }
+            retriever.setDataSource(file.absolutePath)
+            val whiteTimes = times.sorted().filter { time ->
+                val frame = requireNotNull(retriever.getScaledFrameAtTime(time, MediaMetadataRetriever.OPTION_CLOSEST, 16, 16))
+                try { rowBrightness(frame, .5f) > 128.0 } finally { frame.recycle() }
+            }
+            return whiteTimes.filterIndexed { index, time -> index == 0 || time - whiteTimes[index - 1] > 50_000L }
+        } finally { extractor.release(); retriever.release() }
     }
 
     private fun rowBrightness(bitmap: android.graphics.Bitmap, fraction: Float): Double {

@@ -1,0 +1,23 @@
+{
+  "file": "sync-export.mp4",
+  "expected_us": [
+    149999
+  ],
+  "video_us": [
+    150000
+  ],
+  "audio_us": [
+    180000
+  ],
+  "tolerance_us": 33334,
+  "audio_minus_video_us": [
+    30000
+  ],
+  "video_minus_expected_us": [
+    1
+  ],
+  "audio_minus_expected_us": [
+    30001
+  ],
+  "pass": true
+}

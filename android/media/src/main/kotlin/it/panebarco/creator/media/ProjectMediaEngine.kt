@@ -15,7 +15,9 @@ import androidx.media3.common.audio.ChannelMixingMatrix
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.audio.ToInt16PcmAudioProcessor
 import androidx.media3.effect.Presentation
+import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.transformer.Composition
+import androidx.media3.transformer.AssetLoader
 import androidx.media3.transformer.CompositionPlayer
 import androidx.media3.transformer.DefaultEncoderFactory
 import androidx.media3.transformer.EditedMediaItem
@@ -43,13 +45,19 @@ class ProjectMediaEngine(context: Context) {
     private val context = context.applicationContext
     private val activeOutputs = ConcurrentHashMap.newKeySet<String>()
 
-    fun createPreview(project: Project, resolve: (String) -> File): Player {
+    fun createPreview(project: Project, resolve: (String) -> File): Player = createPreviewInternal(project, resolve, null)
+
+    internal fun createPreviewWithAudioSink(project: Project, resolve: (String) -> File, sink: AudioSink): Player =
+        createPreviewInternal(project, resolve, sink)
+
+    private fun createPreviewInternal(project: Project, resolve: (String) -> File, sink: AudioSink?): Player {
         check(Looper.myLooper() == Looper.getMainLooper()) { "L'anteprima deve essere creata sul thread principale." }
         val composition = composition(MediaTimeline.from(project, resolve))
-        return CompositionPlayer.Builder(context)
+        val builder = CompositionPlayer.Builder(context)
             .setLooper(Looper.getMainLooper())
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
-            .build()
+        if (sink != null) builder.setAudioSink(sink)
+        return builder.build()
             .also { player ->
                 try {
                     player.setComposition(composition)
@@ -79,7 +87,8 @@ class ProjectMediaEngine(context: Context) {
                 require(!destination.exists()) { "Il file di destinazione esiste già. Scegli un nuovo nome." }
                 require(destination.parentFile?.let { it.isDirectory || it.mkdirs() } == true) { "Impossibile creare la cartella di esportazione." }
             }
-            transform(composition(timeline), partial, onProgress)
+            val loaderFactory = withContext(Dispatchers.IO) { PrerollAssetLoaderFactory(context, timeline.clips) }
+            transform(composition(timeline), loaderFactory, partial, onProgress)
             withContext(Dispatchers.IO) {
                 ensureActive()
                 val result = MediaProbe.inspect(partial)
@@ -108,7 +117,7 @@ class ProjectMediaEngine(context: Context) {
         }
     }
 
-    private suspend fun transform(composition: Composition, partial: File, onProgress: (Int) -> Unit) =
+    private suspend fun transform(composition: Composition, loaderFactory: AssetLoader.Factory, partial: File, onProgress: (Int) -> Unit) =
         withContext(Dispatchers.Main.immediate) {
             val handler = Handler(Looper.getMainLooper())
             val holder = ProgressHolder()
@@ -117,6 +126,7 @@ class ProjectMediaEngine(context: Context) {
                 .setLooper(Looper.getMainLooper())
                 .setAudioMimeType(MimeTypes.AUDIO_AAC)
                 .setVideoMimeType(MimeTypes.VIDEO_H264)
+                .setAssetLoaderFactory(loaderFactory)
                 .setEncoderFactory(DefaultEncoderFactory.Builder(context).setEnableFallback(false).build())
                 .build()
             try {

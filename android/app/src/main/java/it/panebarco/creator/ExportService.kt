@@ -39,8 +39,8 @@ object ExportJobs {
     @Volatile private var restored = false
     private val io = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val persistence = kotlinx.coroutines.sync.Mutex()
-    fun begin(projectId: String): ExportStatus = synchronized(this) {
-        ExportStatus(ExportPhase.RUNNING, projectId, jobId = UUID.randomUUID().toString()).also { mutable.value = it }
+    fun begin(projectId: String, jobId: String = UUID.randomUUID().toString()): ExportStatus = synchronized(this) {
+        ExportStatus(ExportPhase.RUNNING, projectId, jobId = jobId).also { mutable.value = it }
     }
     fun restore(context: Context) {
         synchronized(this) { if (restored) return; restored = true }
@@ -52,7 +52,7 @@ object ExportJobs {
             val phase = if (savedPhase == ExportPhase.RUNNING) ExportPhase.INTERRUPTED else savedPhase
             val name = prefs.getString("file", null)
             val file = name?.takeIf { it.matches(Regex("[a-zA-Z0-9._-]+")) }?.let { File(File(app.filesDir, "exports"), it) }?.takeIf { it.isFile }
-            val status = ExportStatus(phase = if (phase == ExportPhase.COMPLETE && file == null) ExportPhase.FAILED else phase, projectId = prefs.getString("project", null), progress = if (phase == ExportPhase.COMPLETE) 100 else 0, file = file, error = if (phase == ExportPhase.INTERRUPTED) "L’esportazione è stata interrotta. Il progetto è salvo: avviala di nuovo." else prefs.getString("error", null), revisionId = prefs.getString("revision", null), jobId = prefs.getString("job", null))
+            val status = ExportStatus(phase = if (phase == ExportPhase.COMPLETE && file == null) ExportPhase.FAILED else phase, projectId = prefs.getString("project", null), progress = if (phase == ExportPhase.COMPLETE) 100 else 0, file = file, error = if (phase == ExportPhase.INTERRUPTED) "L’esportazione è stata interrotta. Il progetto è salvo: avviala di nuovo." else if (phase == ExportPhase.CANCELED) "Esportazione annullata. Il progetto è conservato." else if (phase == ExportPhase.FAILED) "Esportazione non riuscita. Riapri il progetto e riprova." else null, revisionId = prefs.getString("revision", null), jobId = prefs.getString("job", null))
             synchronized(this@ExportJobs) { if (mutable.value.phase == ExportPhase.IDLE) mutable.value = status }
         }
     }
@@ -94,11 +94,13 @@ class ExportService : Service() {
         if (intent?.action == CANCEL) { task?.cancel(); if (task == null) stopSelf(); return START_NOT_STICKY }
         val id = intent?.getStringExtra(PROJECT) ?: run { stopSelf(); return START_NOT_STICKY }
         if (task?.isActive == true) return START_NOT_STICKY
+        val jobId = intent.getStringExtra(JOB)
+        val base = ExportJobs.state.value
+        if (!MediaWorkCoordinator.ownsExport(jobId) || base.jobId != jobId || base.projectId != id || base.phase != ExportPhase.RUNNING) { stopSelf(); return START_NOT_STICKY }
         projectId = id
-        val base = ExportJobs.begin(id)
         val type = if (Build.VERSION.SDK_INT >= 35) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING else ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         try { startForeground(NOTIFICATION, notification(0), type) }
-        catch (e: Exception) { ExportJobs.failNow(applicationContext, id, base.jobId, "Il sistema non consente l’esportazione in background: ${e.message}. Apri l’app e riprova."); stopSelf(); return START_NOT_STICKY }
+        catch (e: Exception) { ExportJobs.failNow(applicationContext, id, base.jobId, AppErrors.describe(e, AppOperation.EXPORT_START)); MediaWorkCoordinator.releaseExport(base.jobId); stopSelf(); return START_NOT_STICKY }
         task = scope.launch {
             var output: File? = null
             try {
@@ -106,7 +108,7 @@ class ExportService : Service() {
                 val app = application as CreatorApplication
                 val project = withContext(Dispatchers.IO) { app.repository.load(id) }
                 ExportJobs.publish(this@ExportService, base.copy(revisionId = project.revisionId))
-                require(project.clips.isNotEmpty()) { "Aggiungi una clip prima di esportare." }
+                if (project.clips.isEmpty()) throw UserFeedbackException("Aggiungi una clip prima di esportare.")
                 output = withContext(Dispatchers.IO) { File(filesDir, "exports").apply { if (!isDirectory && !mkdirs()) throw IOException("Impossibile preparare l’esportazione: controlla lo spazio libero.") }.let { File(it, "creator-${UUID.randomUUID()}.mp4") } }
                 val target = requireNotNull(output)
                 val files = withContext(Dispatchers.IO) { project.clips.map { it.sourceId }.distinct().associateWith { app.repository.sourceFile(id, it) } }
@@ -121,8 +123,8 @@ class ExportService : Service() {
                 withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO) { output?.delete(); runCatching { ExportJobs.publish(this@ExportService, base.copy(phase = ExportPhase.CANCELED, error = "Esportazione annullata. Il progetto e gli originali sono conservati.")) } }
             } catch (e: Exception) {
                 withContext(Dispatchers.IO) { output?.delete() }
-                ExportJobs.failNow(applicationContext, id, base.jobId, e.message ?: "Esportazione non riuscita. Riprova.")
-            } finally { ServiceCompat.stopForeground(this@ExportService, ServiceCompat.STOP_FOREGROUND_REMOVE); stopSelf() }
+                ExportJobs.failNow(applicationContext, id, base.jobId, AppErrors.describe(e, AppOperation.EXPORT_VIDEO))
+            } finally { MediaWorkCoordinator.releaseExport(base.jobId); ServiceCompat.stopForeground(this@ExportService, ServiceCompat.STOP_FOREGROUND_REMOVE); stopSelf() }
         }
         return START_NOT_STICKY
     }
@@ -136,14 +138,24 @@ class ExportService : Service() {
         private const val NOTIFICATION = 1001
         private const val COMPLETED_NOTIFICATION = 1002
         private const val PROJECT = "project"
+        private const val JOB = "export_job"
         private const val CANCEL = "it.panebarco.creator.CANCEL_EXPORT"
-        fun start(context: Context, projectId: String) { ContextCompat.startForegroundService(context, Intent(context, ExportService::class.java).putExtra(PROJECT, projectId)) }
+        fun start(context: Context, projectId: String) {
+            val token = MediaWorkCoordinator.reserveExport()
+            val reserved = ExportJobs.begin(projectId, token)
+            try { ContextCompat.startForegroundService(context, Intent(context, ExportService::class.java).putExtra(PROJECT, projectId).putExtra(JOB, token)) }
+            catch (error: Exception) {
+                ExportJobs.failNow(context.applicationContext, projectId, reserved.jobId, AppErrors.describe(error, AppOperation.EXPORT_START))
+                MediaWorkCoordinator.releaseExport(token)
+                throw error
+            }
+        }
         fun cancel(context: Context) { context.startService(Intent(context, ExportService::class.java).setAction(CANCEL)) }
     }
 }
 
 suspend fun saveExportToGallery(context: Context, file: File, title: String): Uri = withContext(Dispatchers.IO) {
-    require(file.isFile && file.length() > 0) { "Il file esportato non è più disponibile. Esporta di nuovo." }
+    if (!file.isFile || file.length() <= 0) throw UserFeedbackException("Il file esportato non è più disponibile. Esporta di nuovo.")
     val values = ContentValues().apply { put(MediaStore.Video.Media.DISPLAY_NAME, "${safeName(title)}-${System.currentTimeMillis()}.mp4"); put(MediaStore.Video.Media.MIME_TYPE, "video/mp4"); put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/Creator"); put(MediaStore.Video.Media.IS_PENDING, 1) }
     val resolver = context.contentResolver
     val uri = resolver.insert(MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values) ?: throw IOException("La galleria non ha creato il video. Controlla lo spazio disponibile.")

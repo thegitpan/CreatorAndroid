@@ -39,6 +39,8 @@ import it.panebarco.creator.domain.Project
 import it.panebarco.creator.media.CameraSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object ContextCompatPermission { fun missing(context: Context, permission: String) = ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED }
 
@@ -51,14 +53,18 @@ object ContextCompatPermission { fun missing(context: Context, permission: Strin
     var cameraAllowed by remember { mutableStateOf(!ContextCompatPermission.missing(context, Manifest.permission.CAMERA)) }
     var microphoneAllowed by remember { mutableStateOf(!ContextCompatPermission.missing(context, Manifest.permission.RECORD_AUDIO)) }
     var silentChoice by rememberSaveable { mutableStateOf(false) }
+    var cameraLease by remember { mutableStateOf<String?>(null) }
     var preparing by remember { mutableStateOf(false) }
     var exitAfterSave by remember { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         cameraAllowed = !ContextCompatPermission.missing(context, Manifest.permission.CAMERA)
         microphoneAllowed = !ContextCompatPermission.missing(context, Manifest.permission.RECORD_AUDIO)
     }
-    LaunchedEffect(Unit) { if (!cameraAllowed || !microphoneAllowed) permission.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)) }
+    LaunchedEffect(cameraLease) { if (cameraLease != null && (!cameraAllowed || !microphoneAllowed)) permission.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)) }
     DisposableEffect(owner) {
+        val lease = MediaWorkCoordinator.acquireCamera()
+        cameraLease = lease
+        if (lease == null) { model.reportError(MediaWorkCoordinator.WAIT_FOR_EXPORT); model.navigate(Destination.EDITOR) }
         val activity = context as? ComponentActivity
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val observer = LifecycleEventObserver { _, event ->
@@ -69,7 +75,7 @@ object ContextCompatPermission { fun missing(context: Context, permission: Strin
             }
         }
         owner.lifecycle.addObserver(observer)
-        onDispose { owner.lifecycle.removeObserver(observer); session.close(); activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+        onDispose { owner.lifecycle.removeObserver(observer); session.close(); lease?.let { MediaWorkCoordinator.releaseCameraWhenFinalized(it, session.state) }; activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
     val leave = {
         if (camera.recording || camera.starting || camera.finalizing || preparing) { exitAfterSave = true; session.stop() }
@@ -82,13 +88,13 @@ object ContextCompatPermission { fun missing(context: Context, permission: Strin
             Spacer(Modifier.weight(1f))
             Text("${project.clips.size} clip · ${durationLabel(project.durationUs)}", style = MaterialTheme.typography.labelMedium)
         }
-        if (cameraAllowed) AndroidView(factory = { PreviewView(it).apply {
+        if (cameraAllowed && cameraLease != null) AndroidView(factory = { PreviewView(it).apply {
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
             scaleType = PreviewView.ScaleType.FIT_CENTER
             setOnTouchListener { view, event -> if (event.action == MotionEvent.ACTION_UP) { session.focus(event.x, event.y); view.performClick() }; true }
             session.bind(owner, this, front = false)
         } }, modifier = Modifier.fillMaxWidth().heightIn(min = 250.dp, max = 460.dp).aspectRatio(9f / 12f).background(Color.Black).testTag("camera_preview"))
-        else Card { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        else if (!cameraAllowed) Card { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Consenti l’accesso alla fotocamera per registrare.")
             Text("Puoi sempre importare e montare video senza questo permesso.", style = MaterialTheme.typography.bodySmall)
             Button(onClick = { permission.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)) }) { Text("Consenti fotocamera") }
@@ -105,6 +111,7 @@ object ContextCompatPermission { fun missing(context: Context, permission: Strin
         if (!microphoneAllowed && !silentChoice) {
             Text("Il microfono non è autorizzato. Consenti il permesso oppure scegli una ripresa senza audio.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = { silentChoice = true }, modifier = Modifier.testTag("record_silent_choice")) { Text("Scegli ripresa senza audio") }
+            TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) }) { Text("Gestisci permesso microfono") }
         }
         if (camera.canLockFocus || camera.canLockExposure) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (camera.canLockFocus) FilterChip(selected = camera.focusLocked, onClick = { session.setFocusLocked(!camera.focusLocked) }, enabled = !camera.focusLockPending && !camera.finalizing && !camera.starting, label = { Text(if (camera.focusLockPending) "Blocco fuoco…" else if (camera.focusLocked) "Fuoco bloccato" else "Blocca fuoco") }, modifier = Modifier.testTag("focus_lock"))
@@ -123,14 +130,17 @@ object ContextCompatPermission { fun missing(context: Context, permission: Strin
                     scope.launch {
                         try {
                             val target = model.prepareRecording(project.id)
-                            if (exitAfterSave) model.navigate(Destination.EDITOR)
-                            else if (owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) session.start(target, audioEnabled = !silentChoice) { result -> model.finalizeRecording(project.id, result); if (exitAfterSave) model.navigate(Destination.EDITOR) }
+                            withContext(Dispatchers.Main.immediate) {
+                                if (!MediaWorkCoordinator.cameraAllowed() || ExportJobs.state.value.phase == ExportPhase.RUNNING) model.reportError(MediaWorkCoordinator.WAIT_FOR_EXPORT)
+                                else if (exitAfterSave) model.navigate(Destination.EDITOR)
+                                else if (owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) session.start(target, audioEnabled = !silentChoice) { result -> model.finalizeRecording(project.id, result); if (exitAfterSave) model.navigate(Destination.EDITOR) }
+                            }
                         } catch (e: CancellationException) { throw e }
-                        catch (e: Exception) { model.reportError(e.message ?: "Impossibile preparare la ripresa. Controlla lo spazio disponibile.") }
+                        catch (e: Exception) { model.reportError(AppErrors.describe(e, AppOperation.START_RECORDING)) }
                         finally { preparing = false }
                     }
                 }
-            }, enabled = cameraAllowed && camera.ready && !busy && !camera.starting && !camera.finalizing && !preparing && (microphoneAllowed || silentChoice), modifier = Modifier.height(56.dp).testTag("record_toggle"), colors = ButtonDefaults.buttonColors(containerColor = if (camera.recording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)) { Icon(if (camera.recording) Icons.Default.Pause else Icons.Default.FiberManualRecord, null); Spacer(Modifier.width(8.dp)); Text(if (camera.recording) "Pausa e salva" else if (project.clips.isEmpty()) "Registra" else "Riprendi") }
+            }, enabled = camera.recording || (cameraAllowed && camera.ready && !busy && !camera.starting && !camera.finalizing && !preparing && (microphoneAllowed || silentChoice)), modifier = Modifier.height(56.dp).testTag("record_toggle"), colors = ButtonDefaults.buttonColors(containerColor = if (camera.recording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)) { Icon(if (camera.recording) Icons.Default.Pause else Icons.Default.FiberManualRecord, null); Spacer(Modifier.width(8.dp)); Text(if (camera.recording) "Pausa e salva" else if (project.clips.isEmpty()) "Registra" else "Riprendi") }
         }
         Text("Pausa finalizza e salva un segmento. Per continuare, premi Riprendi. Cambiando app la ripresa si arresta e viene salvata.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
         Spacer(Modifier.height(12.dp))
