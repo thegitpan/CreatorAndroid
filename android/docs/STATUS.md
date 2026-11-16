@@ -28,6 +28,6 @@ User requested autonomous implementation through the point requiring real Samsun
 - Recover validated retained manifests with a visible persistent warning; isolate corrupt projects without silently losing them.
 - Root owns Git commits and the final audit; agents report tests and limitations.
 
-## Acceptance not yet established
+## Verification in progress
 
-Application compilation, tests, emulator workflows, exported fixtures and physical S26 checks remain to be completed. An emulator never certifies S26 camera quality, synchronization or thermal behavior.
+The integrated debug APK has compiled. Initial domain/data tests (30) and media unit tests (7) pass; subsequent audit fixes are still being added. Public UI instrumentation and synthetic-video exports are running on the dedicated API36 arm64 emulator. See AUDIT.md for findings and the eventual final evidence report. Physical S26 checks remain to be completed. An emulator never certifies S26 camera quality, synchronization or thermal behavior.

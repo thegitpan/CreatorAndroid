@@ -1,0 +1,16 @@
+.gradle/
+.kotlin/
+**/build/
+local.properties
+.cxx/
+captures/
+.qa/
+outputs/
+*.jks
+*.keystore
+*.hprof
+*.log
+*.apk
+*.aab
+.DS_Store
+*signing*.properties
