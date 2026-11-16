@@ -25,6 +25,7 @@ Camera e render pesanti si escludono prima dell'avvio. I temporanei conservano l
 | Test app API 36 arm64 + test media API 35 arm64 | 14 + 10 superati |
 | Totale | **92 casi distinti superati, 0 errori, 0 fallimenti, 0 saltati** |
 | Build debug, test APK, release firmata e lint | Superati |
+| CI finale Linux e Android API 35 x86_64, commit `92a86c4` | Entrambi i job superati; 14 test app e 10 media senza esclusioni |
 | Audit indipendenti Standards e Spec | Rilievi iniziali e successivi ricontrollati; nessun blocco residuo nel codice candidato |
 | Confronto indipendente sync su sei marcatori | Scarto A/V massimo 30,011 ms, soglia 33,334 ms |
 | Aggiornamento in-place dell'APK personale, su emulatore | 9 file identici byte per byte, Redo dopo riapertura e backup/ripristino via selettori Android riusciti |

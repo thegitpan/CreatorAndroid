@@ -60,10 +60,56 @@
   "counting": "Repeated runs on Linux CI and API36 media emulator are not counted again.",
   "physicalSamsungAcceptance": "partial: baseline rear portrait and synthetic media verified; final recorder hardware checks pending",
   "ci": {
-    "lastVerifiedSourceCommit": "0977242153ce078c0f702e42446b80664edeaa61",
-    "url": "https://github.com/thegitpan/CreatorAndroid/actions/runs/43871516309",
-    "status": "API35 test-host failure reproduced and corrected locally; new CI validation pending",
-    "latestFailedRun": "https://github.com/thegitpan/CreatorAndroid/actions/runs/43879989358"
+    "lastVerifiedSourceCommit": "92a86c406bc5734205f410309c9e3cab73b073f7",
+    "productionSourceCommit": "1c4e3c253d56c1a8e4a5878f0cd617c7ee95b257",
+    "productionUnchangedSinceSourceCommit": true,
+    "runId": 43887372898,
+    "url": "https://github.com/thegitpan/CreatorAndroid/actions/runs/43887372898",
+    "status": "success",
+    "environment": "ubuntu-24.04, JDK17; Android API35 x86_64 default image with front and back emulated cameras",
+    "build": {
+      "jobId": 133369069530,
+      "status": "success",
+      "jvmTests": 68,
+      "debugApk": true,
+      "instrumentationApks": true,
+      "lint": true
+    },
+    "deviceTests": {
+      "jobId": 133369069126,
+      "status": "success",
+      "modules": [
+        {
+          "module": "app",
+          "tests": 14,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "module": "media",
+          "tests": 10,
+          "failures": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "testReportArtifact": {
+      "id": 14236215558,
+      "name": "Android-test-results",
+      "sha256": "065b9b3b8e58363fc18a0fdd3f8e419e8522f949f9aa7cd854ccdf7a1d6f9c89"
+    },
+    "resolvedEnvironmentFailures": [
+      {
+        "runId": 43879989358,
+        "cause": "PCM instrumentation lacked a foreground host required for audio focus on API35/target36",
+        "evidence": "preview-focus-api35.json"
+      },
+      {
+        "runId": 43883875460,
+        "cause": "Default AVD had no front camera for recorder rotation test",
+        "evidence": "ci-dual-camera.json"
+      }
+    ]
   },
   "additionalRuns": [
     {
@@ -75,6 +121,14 @@
       "module": "media",
       "tests": 10,
       "environment": "Dedicated API36 arm64 emulator"
+    },
+    {
+      "module": "app",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "environment": "Fresh API35 arm64 Google APIs emulator; 320x640/density160; both cameras emulated"
     }
   ]
 }

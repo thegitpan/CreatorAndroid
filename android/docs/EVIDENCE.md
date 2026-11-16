@@ -1,6 +1,6 @@
 # Verifiche della consegna personale 0.1.0
 
-Data: 16 novembre 2026. Ambito: codice Android e correzioni successive alla prima implementazione `29d0f15`. Emulatori dedicati API 36 arm64 e Samsung SM-S948B con Android 17 / API 37; JDK 17, Gradle 8.13, AGP 8.13.2, Kotlin 2.2.21, target SDK 36, CameraX 1.6.2 e Media3 1.11.1. Sul telefono i test automatici del motore usano soltanto campioni sintetici e un pacchetto isolato. La ripresa fisica e la sua accettazione sono descritte separatamente.
+Data: 16 novembre 2026. Ambito: codice Android e correzioni successive alla prima implementazione `29d0f15`. Emulatori dedicati API 35/36 arm64, CI API 35 x86_64 e Samsung SM-S948B con Android 17 / API 37; JDK 17, Gradle 8.13, AGP 8.13.2, Kotlin 2.2.21, target SDK 36, CameraX 1.6.2 e Media3 1.11.1. Sul telefono i test automatici del motore usano soltanto campioni sintetici e un pacchetto isolato. La ripresa fisica e la sua accettazione sono descritte separatamente.
 
 ## Suite finale
 
@@ -15,6 +15,8 @@ Data: 16 novembre 2026. Ambito: codice Android e correzioni successive alla prim
 | **Totale** | | **92** | **0 / 0 / 0** |
 
 [Riepilogo estratto dai report XML](evidence/final-test-summary.json). Le suite interessate sono state eseguite dopo l'ultima modifica del rispettivo modulo. I 10 test media sono passati anche sull'emulatore API 36; ripetizioni ed esecuzioni CI non sono sommate al totale dei casi distinti. Gli aggiornamenti documentali non modificano l'APK. Build debug, APK strumentali, release firmata e lint sono passati. La variante diagnostica CameraX 1.7.0-rc02 ha superato la sola compilazione debug; non eredita i risultati runtime della baseline.
+
+La [CI finale su GitHub](https://github.com/thegitpan/CreatorAndroid/actions/runs/43887372898), commit `92a86c4`, ha completato con successo entrambi i job: build/test JVM/lint su Ubuntu 24.04 e suite Android API 35 x86_64, 14 test app più 10 media, senza fallimenti o esclusioni. I report HTML sono conservati anche localmente. L'APK personale proviene dal commit di produzione `1c4e3c2`; i commit successivi modificano soltanto test, configurazione CI e documentazione. La registrazione finale degli esiti è una modifica documentale e non richiede una nuova build.
 
 I test coprono i flussi pubblici di registrazione A/Pausa/B, uscita/riapertura/C, creazione/rinomina/cestino/ripristino, import, split al playhead, trim, riordino, volume, Undo/Redo, export, annullamento/retry, backup e ripristino, galleria e URI di condivisione. I selettori esterni e il chooser sono intercettati dove necessario; vengono provati stream reali e concessioni URI, senza inviare media a destinatari esterni. La permanenza del destinatario del picker è verificata tramite stato ripristinato; non equivale a provare ogni provider o ogni interruzione possibile del sistema.
 
