@@ -1,0 +1,215 @@
+{
+  "date": "2026-11-16",
+  "version": "0.1.1",
+  "versionCode": 2,
+  "productionSourceCommit": "8793f59c477d72eb58f331e9e407e5291431ae16",
+  "validationCommit": "8b15315ac68ab81c89e30eb293e988b38b8ca004",
+  "artifacts": [
+    {
+      "kind": "personal",
+      "file": "Creator-0.1.1.apk",
+      "bytes": 56430732,
+      "sha256": "f25dc6e5e4f8b450c952c52f138166f223484406d49c1067fc8f48ba820b7ffb",
+      "signerSha256": "74de6ac4b1fb59e51b1f985a2192dc462a1b8120587dd2bc3f2c8a5ccd88b689"
+    },
+    {
+      "kind": "test",
+      "file": "Creator-test-0.1.1.apk",
+      "bytes": 76986198,
+      "sha256": "8ce64b17a71dc38f47b9241a1414a188ea66a5e17828be42b5c5e809715e4555",
+      "signerSha256": "3ad64deed0845aeb0e7df0a78c873cb3d8be2d2f4d843f8c9b2f66962a1ad3f6"
+    }
+  ],
+  "jvmTests": {
+    "domain": 9,
+    "data": 36,
+    "media": 16,
+    "app": 7,
+    "total": 68,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "buildAndLintPassed": true,
+  "androidSuites": {
+    "status": "success",
+    "modules": {
+      "app": {
+        "environment": "API36 arm64 dedicated emulator",
+        "tests": 14,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "media": {
+        "environment": "API36 arm64 dedicated emulator",
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "layoutReviews": {
+    "standards": "closed",
+    "spec": "closed after sensor-coherent screenshots",
+    "physicalSamsungAcceptance": "pending"
+  },
+  "compactViewport": {
+    "widthDp": 600,
+    "heightDp": 220,
+    "fontScale": 2.0,
+    "minimumTouchTargetDp": 48,
+    "permissionAndZoomGesturesPassed": true,
+    "errorDetailsDialogPassed": true
+  },
+  "emulatorSensorPoses": [
+    {
+      "orientation": "landscape",
+      "fontScale": 1.0,
+      "acceleration": "acceleration = 9.81:0:0\nOK",
+      "profile": "Profilo video. 720p \u00b7 1280\u00d7720 \u00b7 rotazione 0\u00b0 \u00b7 SDR \u00b7 richiesti 30 fps"
+    },
+    {
+      "orientation": "landscape",
+      "fontScale": 1.5,
+      "acceleration": "acceleration = 9.81:0:0\nOK",
+      "profile": "Profilo video. 720p \u00b7 1280\u00d7720 \u00b7 rotazione 0\u00b0 \u00b7 SDR \u00b7 richiesti 30 fps"
+    },
+    {
+      "orientation": "portrait",
+      "fontScale": 1.0,
+      "acceleration": "acceleration = 0:9.81:0\nOK",
+      "profile": "Profilo video. 720p \u00b7 1280\u00d7720 \u00b7 rotazione 90\u00b0 \u00b7 SDR \u00b7 richiesti 30 fps"
+    },
+    {
+      "orientation": "portrait",
+      "fontScale": 1.5,
+      "acceleration": "acceleration = 0:9.81:0\nOK",
+      "profile": "Profilo video. 720p \u00b7 1280\u00d7720 \u00b7 rotazione 90\u00b0 \u00b7 SDR \u00b7 richiesti 30 fps"
+    }
+  ],
+  "emulatorCapturedFiles": [
+    {
+      "take": 1,
+      "orientation": "landscape",
+      "width": 1280,
+      "height": 720,
+      "rotationDegrees": 0,
+      "displayWidth": 1280,
+      "displayHeight": 720,
+      "durationUs": 4431200,
+      "hasAudio": true,
+      "sha256MatchesCommittedOriginal": true,
+      "sha256": "31abbe64bf62be7d8ca5ea4a64dbb38a78ae0bffc60f0bf50b0b2e81ab1bec57",
+      "frameDecodedAtUs": 500000
+    },
+    {
+      "take": 2,
+      "orientation": "landscape",
+      "width": 1280,
+      "height": 720,
+      "rotationDegrees": 0,
+      "displayWidth": 1280,
+      "displayHeight": 720,
+      "durationUs": 4609100,
+      "hasAudio": true,
+      "sha256MatchesCommittedOriginal": true,
+      "sha256": "ba5ca64d252bb146f738bf7bf818a7f7554d8834b565322b20012e6db1cfafa1",
+      "frameDecodedAtUs": 500000
+    },
+    {
+      "take": 3,
+      "orientation": "portrait",
+      "width": 1280,
+      "height": 720,
+      "rotationDegrees": 90,
+      "displayWidth": 720,
+      "displayHeight": 1280,
+      "durationUs": 2359600,
+      "hasAudio": true,
+      "sha256MatchesCommittedOriginal": true,
+      "sha256": "6c01f87d289f9969d0f4826bef26b24156b5fbb168e6025ca6c83abf10f7fa0d",
+      "frameDecodedAtUs": 500000
+    },
+    {
+      "take": 4,
+      "orientation": "portrait",
+      "width": 1280,
+      "height": 720,
+      "rotationDegrees": 90,
+      "displayWidth": 720,
+      "displayHeight": 1280,
+      "durationUs": 4385500,
+      "hasAudio": true,
+      "sha256MatchesCommittedOriginal": true,
+      "sha256": "132a967be64852cb4c6b42e0c9d2bb3148e9fe7375557168c637164da9f170ac",
+      "frameDecodedAtUs": 500000
+    }
+  ],
+  "emulatorLimitation": "Activity requestedOrientation tests validate window layout and lifecycle only. Separate manual sensor/display-coherent captures validate emulator framing; neither accepts Samsung hardware.",
+  "inPlaceUpgrade": {
+    "oldVersion": "0.1.0/code1",
+    "newVersion": "0.1.1/code2",
+    "package": "it.panebarco.creator",
+    "environment": "Dedicated API36 arm64 emulator",
+    "filesCompared": 15,
+    "bytesCompared": 4871973,
+    "allFilesByteIdenticalImmediatelyAfterInPlaceUpgrade": true,
+    "coldLaunchSucceeded": true,
+    "physicalSamsungUpdated": false,
+    "projectFilesComparedAfterColdLaunch": 11,
+    "priorProjectFilesUnchangedAfterColdLaunch": true,
+    "libraryProjectsVisible": 2,
+    "androidxProfileFilesUpdatedAfterLaunch": [
+      "files/profileinstaller_profileWrittenFor_lastUpdateTime.dat",
+      "files/profileInstalled"
+    ]
+  },
+  "ci": {
+    "runId": 43905842061,
+    "url": "https://github.com/thegitpan/CreatorAndroid/actions/runs/43905842061",
+    "status": "success",
+    "validatedCommit": "8b15315ac68ab81c89e30eb293e988b38b8ca004",
+    "previousRun": 43903903914,
+    "resolvedTestFailure": "Error detail assertion matched both background notice and dialog; scoped to dialog, focused rerun passed in 5.504s.",
+    "buildJob": {
+      "id": 133434300070,
+      "status": "success"
+    },
+    "deviceJob": {
+      "id": 133434300811,
+      "status": "success",
+      "environment": "API35 x86_64 default emulator with both cameras emulated",
+      "modules": [
+        {
+          "module": "app",
+          "tests": 14,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "module": "media",
+          "tests": 10,
+          "failures": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "testReportArtifact": {
+      "id": 14246480269,
+      "sha256": "43fde322643be57b553cb0a0c044befd96d0bd0723c1bd2147f3c8a638f6057c"
+    }
+  },
+  "installedOnSamsung": false,
+  "totalDistinctTestsPassed": 92,
+  "nativeLibrariesUnchangedFrom0_1_0": 12,
+  "runtimeMicrophoneDenial": {
+    "actualRuntimeMicrophoneDenial": true,
+    "explicitSilentChoice": true,
+    "captureLedgerCount": 1,
+    "hasAudio": false,
+    "durationUs": 4430800,
+    "sha256MatchesCommittedOriginal": true
+  }
+}
