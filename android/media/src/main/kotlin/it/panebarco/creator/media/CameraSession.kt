@@ -11,7 +11,6 @@ import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.TotalCaptureResult
 import android.hardware.display.DisplayManager
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Range
@@ -161,12 +160,7 @@ class CameraSession(context: Context) {
         this.owner = owner
         this.previewView = previewView
         owner.lifecycle.addObserver(lifecycleObserver)
-        // CameraX 1.6.2's TextureView rotation assumes a mirrored front stream.
-        // Use the display's SurfaceView path only where Preview can disable that mirror.
-        previewView.implementationMode = if (front && Build.VERSION.SDK_INT >= 33) {
-            PreviewView.ImplementationMode.PERFORMANCE
-        } else PreviewView.ImplementationMode.COMPATIBLE
-        previewView.scaleType = PreviewView.ScaleType.FIT_CENTER
+        CameraPreview.configure(previewView, front)
         rotations = CameraRotationTargets(previewView.display?.rotation ?: Surface.ROTATION_0)
         mutableState.update { it.copy(ready = false, front = front, error = null) }
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -203,7 +197,7 @@ class CameraSession(context: Context) {
         unbindOwnedUseCases()
         val previewBuilder = Preview.Builder()
             .setTargetRotation(rotations.preview)
-            .setMirrorMode(MirrorMode.MIRROR_MODE_OFF)
+            .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
             .setResolutionSelector(
                 ResolutionSelector.Builder()
                     .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
@@ -406,7 +400,7 @@ class CameraSession(context: Context) {
         val current = camera ?: return
         val view = previewView ?: return
         if (!mutableState.value.canFocus || !x.isFinite() || !y.isFinite() || view.width == 0 || view.height == 0) return
-        val point = PreviewMetering.createPoint(view, mutableState.value.front, x, y)
+        val point = view.meteringPointFactory.createPoint(x.coerceIn(0f, view.width.toFloat()), y.coerceIn(0f, view.height.toFloat()))
         lastFocusPoint = point
         if (focusLockRequested) {
             setFocusLocked(true)

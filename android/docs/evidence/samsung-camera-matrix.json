@@ -4,7 +4,7 @@
     "model": "SM-S948B",
     "apiLevel": 37
   },
-  "status": "final-candidate-installed-awaiting-physical-matrix",
+  "status": "candidate-c-software-verified-awaiting-samsung-reconnection",
   "baselineVersion": "0.1.1/code2",
   "baselineProductionCommit": "8793f59c477d72eb58f331e9e407e5291431ae16",
   "observations": [
@@ -111,7 +111,7 @@
     "installedInPlace": true,
     "all23DataFilesIdenticalImmediatelyAfterInstall": true,
     "nativeLibrariesUnchanged": 12,
-    "physicalVerification": "front upright per user; rear inversion reported; global backend candidate rejected"
+    "physicalVerification": "user terminology was ambiguous; no validated preview/file acceptance"
   },
   "backupBeforeUpdate": {
     "files": 23,
@@ -121,9 +121,10 @@
     "all11OtherProjectFilesUnchanged": true
   },
   "remaining": [
-    "Six final front/rear portrait and landscape poses",
-    "Off-center front metering and overlays",
-    "Real synchronization and long-duration broader matrix"
+    "Reconnect Samsung, capture new full backup and install candidate C in place",
+    "Compare real preview and saved movie for front/rear portrait and both landscape directions",
+    "Physical off-center AF/AE points and overlays",
+    "Real audiovisual sync and longer hardware acceptance matrix"
   ],
   "fullHardwareAcceptanceComplete": false,
   "privateEvidenceDirectory": "android/.qa/evidence/samsung/20261116-camera-matrix/",
@@ -154,6 +155,53 @@
     "installedInPlace": true,
     "all25DataFilesIdenticalImmediatelyAfterInstall": true,
     "projectsPreserved": 4,
-    "physicalMatrix": "pending"
+    "physicalMatrix": "failed: active camera1 front, SurfaceView confirmed by logs, displayROT90,target1,rotation0,isMirroringfalse; preview visibly upside down",
+    "ci": {
+      "runId": 43931620026,
+      "commit": "1651b040193f161fc792227091aecdef1499f102",
+      "status": "success",
+      "url": "https://github.com/thegitpan/CreatorAndroid/actions/runs/43931620026",
+      "hardwareAccepted": false
+    }
+  },
+  "candidateC": {
+    "version": "0.1.2/code3",
+    "artifacts": [
+      {
+        "kind": "test",
+        "package": "it.panebarco.creator.debug",
+        "file": "Creator-test-0.1.2.apk",
+        "bytes": 77018822,
+        "sha256": "29d2ba0844b38fadc2ecf73979b05fe0596ff494648d295433378bc96ce44ada",
+        "signerSha256": "3ad64deed0845aeb0e7df0a78c873cb3d8be2d2f4d843f8c9b2f66962a1ad3f6",
+        "zipAligned16KiB": true,
+        "unchangedNativeLibraries": 12
+      },
+      {
+        "kind": "personal",
+        "package": "it.panebarco.creator",
+        "file": "Creator-0.1.2.apk",
+        "bytes": 56430732,
+        "sha256": "f1ace4db53b1b91b7e6acb013b4033086e0cfe44fee12019a6418c48ce0172d4",
+        "signerSha256": "74de6ac4b1fb59e51b1f985a2192dc462a1b8120587dd2bc3f2c8a5ccd88b689",
+        "zipAligned16KiB": true,
+        "unchangedNativeLibraries": 12
+      }
+    ],
+    "previewMirrorMode": "ON_FRONT_ONLY",
+    "viewFrontScaleX": -1,
+    "viewRearScaleX": 1,
+    "renderer": "COMPATIBLE",
+    "videoMirrorMode": "OFF",
+    "standardCameraXMeteringFactory": true,
+    "nativeInverseTouchDispatchTested": true,
+    "allFourTouchOrientationsAndCameraReusePassed": true,
+    "jvmTestsPassed": 71,
+    "touchDispatchTestsPassed": 5,
+    "touchDispatchRedFailuresBeforeFix": 3,
+    "lintPassed": true,
+    "signedBuildsPassed": true,
+    "actualSamsungInstalled": false,
+    "physicalAcceptance": "pending: USB disconnected before candidate C"
   }
 }
