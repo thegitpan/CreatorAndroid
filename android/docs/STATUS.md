@@ -22,7 +22,7 @@ Camera e render pesanti si escludono prima dell'avvio. I temporanei conservano l
 | Verifica finale | Risultato |
 | --- | --- |
 | Test JVM: dominio, archivio, media, app | 68 superati |
-| Test app API 36 arm64 + test media sintetici Samsung API 37 | 14 + 10 superati |
+| Test app API 36 arm64 + test media API 35 arm64 | 14 + 10 superati |
 | Totale | **92 casi distinti superati, 0 errori, 0 fallimenti, 0 saltati** |
 | Build debug, test APK, release firmata e lint | Superati |
 | Audit indipendenti Standards e Spec | Rilievi iniziali e successivi ricontrollati; nessun blocco residuo nel codice candidato |

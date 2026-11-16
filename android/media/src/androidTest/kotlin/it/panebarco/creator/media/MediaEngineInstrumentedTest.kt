@@ -8,6 +8,7 @@ import android.media.ImageReader
 import android.media.MediaMetadataRetriever
 import androidx.media3.common.Player
 import androidx.media3.common.PlaybackException
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import it.panebarco.creator.domain.CanvasShape
@@ -396,7 +397,16 @@ class MediaEngineInstrumentedTest {
         val reader = ImageReader.newInstance(960, 540, PixelFormat.RGBA_8888, 3)
         var player: Player? = null
         val ended = CompletableDeferred<Unit>()
+        // A standalone library instrumentation has no foreground Activity. Target 35+ requires
+        // a top app (or foreground service) for audio focus, just as the editor preview does.
+        var host: ActivityScenario<PreviewHostActivity>? = null
         try {
+            val scenario = ActivityScenario.launch(PreviewHostActivity::class.java)
+            host = scenario
+            assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED, scenario.state)
+            lateinit var windowFocused: CompletableDeferred<Unit>
+            scenario.onActivity { windowFocused = it.windowFocused }
+            withTimeout(10_000L) { windowFocused.await() }
             withContext(Dispatchers.Main) {
                 reader.setOnImageAvailableListener({ it.acquireLatestImage()?.close() }, android.os.Handler(android.os.Looper.getMainLooper()))
                 player = ProjectMediaEngine(context).createPreviewWithAudioSink(project, { source }, sink).also {
@@ -421,7 +431,11 @@ class MediaEngineInstrumentedTest {
             val afterSeek = sink.markerTimesUs()
             assertTrue("Preview seek marker missing: $afterSeek", afterSeek.any { abs(it - 3_899_993L) <= 33_334L })
         } finally {
-            withContext(Dispatchers.Main) { player?.release(); reader.close() }
+            try {
+                withContext(Dispatchers.Main) { player?.release(); reader.close() }
+            } finally {
+                host?.close()
+            }
         }
     }
 

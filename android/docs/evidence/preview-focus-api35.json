@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-16",
+  "environment": "Dedicated API35 arm64 emulator, test targetSdk36",
+  "before": {
+    "outcome": "PCM preview timeout after 30000ms",
+    "platformEvidence": "Audio focus request blocked by hardening",
+    "playWhenReady": false,
+    "reason": "AUDIO_FOCUS_LOSS"
+  },
+  "fix": "androidTest-only visible Activity host, RESUMED and window focused; screen held on",
+  "after": {
+    "fullMediaSuite": {
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "expectedMarkersUs": [
+      149999,
+      1149999,
+      2299997,
+      3299997,
+      3899993,
+      4799989
+    ],
+    "previewAudioMarkersUs": [
+      171000,
+      1171000,
+      2320000,
+      3320000,
+      3926000,
+      4816000
+    ],
+    "previewAudioMinusExpectedUs": [
+      21001,
+      21001,
+      20003,
+      20003,
+      26007,
+      16011
+    ],
+    "maxAbsErrorUs": 26007,
+    "toleranceUs": 33334,
+    "seekPassed": true
+  },
+  "productionChanged": false,
+  "audioFocusHandlingChanged": false,
+  "timeoutOrToleranceChanged": false,
+  "documentation": "https://developer.android.com/about/versions/15/behavior-changes-15"
+}

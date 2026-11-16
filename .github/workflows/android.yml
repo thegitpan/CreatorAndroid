@@ -44,7 +44,9 @@ jobs:
           arch: x86_64
           disable-animations: true
           working-directory: android
-          script: ./gradlew :app:connectedDebugAndroidTest :media:connectedDebugAndroidTest
+          script: |
+            ./gradlew :app:connectedDebugAndroidTest
+            ./gradlew :media:connectedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:

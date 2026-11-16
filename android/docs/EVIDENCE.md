@@ -10,7 +10,7 @@ Data: 16 novembre 2026. Ambito: codice Android e correzioni successive alla prim
 | JVM | data | 36 | 0 / 0 / 0 |
 | JVM | media | 16 | 0 / 0 / 0 |
 | JVM | app | 7 | 0 / 0 / 0 |
-| Samsung API 37, target 36 | media, fixture sintetiche | 10 | 0 / 0 / 0 |
+| API 35 arm64, target 36 | media, fixture sintetiche | 10 | 0 / 0 / 0 |
 | API 36 arm64 | app | 14 | 0 / 0 / 0 |
 | **Totale** | | **92** | **0 / 0 / 0** |
 
@@ -19,6 +19,12 @@ Data: 16 novembre 2026. Ambito: codice Android e correzioni successive alla prim
 I test coprono i flussi pubblici di registrazione A/Pausa/B, uscita/riapertura/C, creazione/rinomina/cestino/ripristino, import, split al playhead, trim, riordino, volume, Undo/Redo, export, annullamento/retry, backup e ripristino, galleria e URI di condivisione. I selettori esterni e il chooser sono intercettati dove necessario; vengono provati stream reali e concessioni URI, senza inviare media a destinatari esterni. La permanenza del destinatario del picker è verificata tramite stato ripristinato; non equivale a provare ogni provider o ogni interruzione possibile del sistema.
 
 L'archivio è verificato contro corruzione, schema futuro, media mancanti, revisioni concorrenti, errori di pubblicazione, replay delle ricevute, backup ostili e recupero distinto di importazioni/riprese. SHA-256 degli originali controllati dopo montaggio ed export. Le nuove regressioni coprono riuso degli inode e lease dei file, chiusura dei descrittori nativi, frontale dopo rotazione, segmento finalizzato una sola volta, due tap su Pausa prima del nuovo frame UI e rilascio della prenotazione anche con coroutine o ViewModel già cancellati.
+
+## Correzione dell'ambiente di test API 35
+
+La CI della candidata ha inizialmente trovato un timeout nel solo test PCM. Il caso è stato riprodotto isolatamente su API 35 arm64: il sistema rifiutava l'audio focus all'instrumentation senza Activity visibile e il player restava pronto, fermo al tempo zero. Per target 35 o successivi, Android richiede app in primo piano o foreground service per concedere il focus. [Documentazione Android](https://developer.android.com/about/versions/15/behavior-changes-15)
+
+Il test ora apre una Activity dedicata nel solo APK androidTest, attende RESUMED e WindowFocus e la chiude dopo il player. Motore di produzione, AudioTrack reale, timeout di 30 s e tolleranza di 33.334 µs restano invariati. Prova mirata rossa prima e verde dopo; suite completa 10/10 verde, massimo errore PCM 26.007 µs e seek verificato. [Evidenza](evidence/preview-focus-api35.json). Il workflow usa inoltre due invocazioni Gradle sequenziali per app e media. La conferma Linux x86_64 è registrata nel riepilogo delle prove.
 
 ## Media e sincronizzazione
 

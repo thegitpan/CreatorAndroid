@@ -49,7 +49,7 @@
     {
       "module": "media",
       "suite": "device",
-      "environment": "Samsung SM-S948B API37; test targetSdk36; synthetic media",
+      "environment": "Dedicated API35 arm64 emulator; test targetSdk36; foreground playback host",
       "tests": 10,
       "failures": 0,
       "errors": 0,
@@ -62,6 +62,19 @@
   "ci": {
     "lastVerifiedSourceCommit": "0977242153ce078c0f702e42446b80664edeaa61",
     "url": "https://github.com/thegitpan/CreatorAndroid/actions/runs/43871516309",
-    "status": "success; final recorder changes awaiting new CI run"
-  }
+    "status": "API35 test-host failure reproduced and corrected locally; new CI validation pending",
+    "latestFailedRun": "https://github.com/thegitpan/CreatorAndroid/actions/runs/43879989358"
+  },
+  "additionalRuns": [
+    {
+      "module": "media",
+      "tests": 10,
+      "environment": "Samsung SM-S948B API37 targetSdk36, synthetic fixtures, before test-host correction; unchanged production media engine"
+    },
+    {
+      "module": "media",
+      "tests": 10,
+      "environment": "Dedicated API36 arm64 emulator"
+    }
+  ]
 }
