@@ -202,6 +202,69 @@
     "lintPassed": true,
     "signedBuildsPassed": true,
     "actualSamsungInstalled": false,
-    "physicalAcceptance": "pending: USB disconnected before candidate C"
+    "physicalAcceptance": "pending: USB disconnected before candidate C",
+    "productionSourceCommit": "7e019ae1e89e372ea47038253bedb652c78e8e96",
+    "fullLocalValidation": {
+      "distinctPassed": 100,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "modules": {
+        "domain": {
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "data": {
+          "tests": 36,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "media": {
+          "tests": 19,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "app": {
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "appAndroid": {
+          "tests": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "mediaAndroid": {
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      }
+    },
+    "ci": {
+      "runId": 43934615846,
+      "commit": "7e019ae1e89e372ea47038253bedb652c78e8e96",
+      "url": "https://github.com/thegitpan/CreatorAndroid/actions/runs/43934615846",
+      "status": "success",
+      "buildJobId": 133535834473,
+      "deviceJobId": 133535833951,
+      "api35X86_64AppTests": 14,
+      "api35X86_64MediaTests": 15
+    },
+    "sourceReviews": "root and independent audit: no source blockers; physical gate open"
+  },
+  "lastVerifiedPhoneBackup": {
+    "files": 25,
+    "bytes": 171481489,
+    "projects": 4,
+    "verifiedAgainstDeviceSha256": true,
+    "priorOriginalsPreserved": true
   }
 }

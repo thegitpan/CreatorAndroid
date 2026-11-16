@@ -1,51 +1,45 @@
-# Stato della candidata personale 0.1.1
+# Stato della candidata personale 0.1.2
 
-Aggiornato il 16 novembre 2026. La 0.1.1 sostituisce il recorder con una camera a tutta schermata: comandi sovrapposti, REC circolare bianco/rosso sempre visibile e nessuno scorrimento per registrare. Segue il riferimento Samsung Video Pro fornito dall'utente. Registrazione, montaggio ed export sono verificati con media sintetici ed emulatori. **Creator · test 0.1.1 è installata sul Samsung**: backup aggiornato verificato, tre progetti conservati e nuova UI controllata in verticale con anteprima reale. La nuova ripresa posteriore verticale è verificata: REC/Pausa sempre visibili, un solo segmento salvato e video coerente con l’anteprima. Restano le altre combinazioni della matrice hardware. Requisiti, audit visivo, prove e limiti dell'aggiornamento sono in [RECORDER-UX.md](RECORDER-UX.md).
+Aggiornato il 16 novembre 2026. La candidata C 0.1.2/code 3 interviene sul percorso dell’anteprima frontale non specchiata e separa la rotazione del display da quella del segmento registrato. **100 test locali passati; accettazione fisica ancora aperta.** Il Samsung si è scollegato prima dell’installazione della candidata C. Sul telefono è rimasta la candidata B, con lo stesso numero di versione ma APK diverso, nella quale il difetto frontale è stato ancora osservato. Non considerare il numero di versione una prova di aggiornamento alla build finale.
 
 ## Consegna
 
-- Fork: <https://github.com/thegitpan/CreatorAndroid>, ramo predefinito `android/main`.
-- Upstream conservato: `antirez/YouRecApp`, commit `faf1815e82e1f2d5f03034a583363d3c3af464a2`.
-- App: **Creator 0.1.1**, versione interna 2, ID personale `it.panebarco.creator`.
-- Consegna locale: `android/outputs/Creator-0.1.1/`, con APK personale e `Creator-test-0.1.1.apk` per aggiornare la stessa Creator · test già installata. SHA-256, firme, anteprime e metadati sono nella cartella, esclusa da Git.
-- Firma personale stabile; chiave e credenziali fuori dal repository. La build di test usa l'ID separato `it.panebarco.creator.debug`.
-- Nessuna pubblicazione su Google Play o release pubblica dell'APK effettuata.
+- Fork: <https://github.com/thegitpan/CreatorAndroid>, ramo `android/main`.
+- Sorgente della candidata C: `7e019ae1e89e372ea47038253bedb652c78e8e96`.
+- Consegna locale: `android/outputs/Creator-0.1.2/`, con APK test per aggiornare `it.panebarco.creator.debug` e APK personale separato `it.panebarco.creator`.
+- Firme precedenti mantenute; chiave personale fuori dal repository. SHA-256, firme e stato esatto della CI sono in BUILD.json nella consegna.
+- Ultimo backup completo verificato: **quattro progetti, 25 file, 171.481.489 byte**. Include i progetti aggiunti dall’utente e le riprese QA. Nessuna disinstallazione o cancellazione di progetti effettuata.
+- Nessuna release pubblica dell’APK o pubblicazione Google Play.
 
-## Funzioni implementate
+## Comportamento disponibile
 
-Registrazione a segmenti, pausa/ripresa e continuazione dopo riapertura; cambio camera fra segmenti; controlli di zoom e fuoco/esposizione secondo capacità. Progetti, importazione, editor sequenziale con miniature e waveform, scrub, split al playhead, trim, riordino, volume/muto, Undo/Redo persistenti. Formati 9:16 e 16:9 con fit, anteprima ed export MP4 H.264/AAC SDR, annullamento, galleria e condivisione. Originali immutabili, cestino ripristinabile, backup ZIP completo e recupero delle operazioni interrotte con avvisi espliciti.
+Recorder a tutta schermata sul riferimento Samsung Video Pro: comandi compatti sovrapposti, REC/Pausa sempre visibili senza scorrere, cambio camera fra segmenti, zoom e blocchi AF/AE secondo capacità. Registrazione a segmenti con finalizzazione persistita, pausa/ripresa e continuazione dopo riapertura.
 
-Camera e render pesanti si escludono prima dell'avvio. I temporanei conservano l'origine ripresa/importazione: recuperare un import non lo trasforma in una ripresa non annullabile. Le ricevute di export identificano lavoro e revisione del progetto.
+Editor sequenziale con miniature, waveform, scrub, split, trim, riordino, volume/muto e Undo/Redo persistenti. Formati 9:16/16:9, export MP4 H.264/AAC SDR, annullamento, galleria e condivisione. Originali immutabili, cestino ripristinabile, backup ZIP completo e recupero dei temporanei con avvisi. Camera e render pesanti si escludono prima dell’avvio; ricevute di export associate a lavoro e revisione.
 
-## Verifiche completate
+## Verifiche della candidata C
 
-| Verifica finale | Risultato |
+| Verifica | Risultato locale |
 | --- | --- |
-| Test JVM: dominio, archivio, media, app | 68 superati |
-| Test app e media API 36 arm64, eseguiti in sequenza | 14 + 10 superati |
-| Totale | **92 casi distinti superati, 0 errori, 0 fallimenti, 0 saltati** |
-| Build debug, test APK, release firmata e lint | Superati |
-| CI Linux e Android API 35 x86_64, commit `8b15315` | Entrambi i job superati; 14 test app e 10 media senza esclusioni |
-| Audit indipendenti Standards e Spec | Rilievi iniziali e successivi ricontrollati; nessun blocco residuo nel codice candidato |
-| Confronto indipendente sync su sei marcatori | Scarto A/V massimo 30,011 ms, soglia 33,334 ms |
-| Aggiornamento personale 0.1.0 → 0.1.1, su emulatore | 15 file identici subito dopo l'installazione; gli 11 file dei progetti restano identici dopo l'avvio, due progetti visibili |
-| Aggiornamento Samsung 0.1.0 → 0.1.1 | Backup completo di 17 file verificato contro il telefono; tutti identici subito dopo l’installazione; 15 file dei tre progetti invariati dopo l’avvio |
-| Recorder Samsung posteriore, verticale 1080p SDR | REC e Pausa usati senza scorrere, stessa posizione durante la ripresa; 4,8646 s salvati una sola volta; video orientato e coerente con la preview, originali precedenti intatti |
-| Firma, allineamento APK/native library a 16 KiB | Verificati |
+| JVM: dominio, archivio, media, app | 9 + 36 + 19 + 7 = 71 passati |
+| App Android API 36 arm64 | 14 passati |
+| Media Android API 36 arm64 | 15 passati |
+| Totale | **100 casi distinti, zero fallimenti/errori/esclusioni** |
+| Test di gesto reale attraverso ViewGroup e factory CameraX | RED senza compensazione, poi 5/5 passati; quattro rotazioni e riuso fra camere |
+| Build debug, release firmata, lint | Passati |
+| Certificati precedenti e allineamento ZIP a 16 KiB | Verificati; 12 librerie native identiche alla 0.1.1 |
+| Audit sorgente indipendente e del coordinatore | Nessun blocco residuo; verifica fisica richiesta |
 
-I risultati della 0.1.1 sono nel [report strutturato](evidence/recorder-pro.json). [EVIDENCE.md](EVIDENCE.md), [AUDIT.md](AUDIT.md) e [REVIEW.md](REVIEW.md) conservano le prove e gli audit della baseline 0.1.0. La pipeline GitHub esegue build su Linux e test API 35 x86_64; le ripetizioni su ambienti diversi non aumentano il conteggio dei 92 casi distinti.
+La [CI della candidata C](https://github.com/thegitpan/CreatorAndroid/actions/runs/43934615846) è verde: build, JVM e lint su Linux, più 14 test app e 15 media su Android API 35 x86_64. Stato e risultati dettagliati sono nel [report della matrice fisica](evidence/samsung-camera-matrix.json). I 100 casi non sommano le ripetizioni su ambienti diversi.
 
-## Decisioni finali rispetto al piano iniziale
+## Evidenza fisica e limite corrente
 
-- Tempo persistito in microsecondi interi `Long`, con conversioni e confini testati; non i 240.000 tick/s proposti inizialmente.
-- Pausa finalizza un segmento; cambio camera consentito fra segmenti. Nessuna promessa di cambio continuo durante REC.
-- CameraX 1.6.2 è la baseline; 1.7.0-rc02 rimane una variante diagnostica. Media3 1.11.1 serve anteprima ed export.
-- Il preroll di decodifica evita il disallineamento dei tagli AAC. Per AAC-LC si usa un punto di avvio calcolato dai campioni; codec non riconosciuti usano prudentemente la decodifica dall'inizio, che può costare tempo su clip lunghe.
-- Il recorder conserva la camera scelta alla rotazione. Una ricreazione durante REC finalizza il segmento e attende il salvataggio prima di consentire Riprendi; non riavvia automaticamente. REC/Pausa è sovrapposto all'immagine e non dipende da scorrimento o apertura dei pannelli.
-- Pubblicazione degli output con creazione esclusiva, sincronizzazione e lease mantenuta fino a commit/rollback: i hardlink non funzionano nel percorso Android provato. Un arresto durante la copia finale può lasciare un file privato incompleto, mai dichiarato completato o condiviso.
+La 0.1.1 ha superato una ripresa posteriore verticale: REC/Pausa visibili, segmento salvato una sola volta e immagine coerente con la preview. La successiva frontale verticale è risultata diritta. In orizzontale, invece, il sensore frontale ha mostrato preview capovolta di 180° con file salvato diritto. I log identificano camera e renderer effettivi; i nomi frontale/secondaria usati durante la prova non sostituiscono questa identificazione.
+
+Le candidate A e B non sono state accettate: anche il passaggio a SurfaceView ha lasciato il difetto sul sensore frontale, pur con test e CI verdi. C usa il contratto nativo di mirroring frontale CameraX e una riflessione orizzontale del solo PreviewView. Il normale dispatch inverso del View gestisce i tocchi, evitando correzioni doppie. I controlli Compose e il file registrato non vengono riflessi. Dettagli in [RECORDER-UX.md](RECORDER-UX.md).
 
 ## Prossimo passaggio necessario
 
-Proseguire la matrice di [SAMSUNG-ACCEPTANCE.md](SAMSUNG-ACCEPTANCE.md): frontale, orizzontale, sincronizzazione reale e prove di durata. Il nuovo recorder ha superato il confronto fra anteprima e file per la posteriore verticale a 1080p SDR. L’aggiornamento di Creator · test è già riuscito: il nuovo backup comprende anche i progetti aggiunti dopo lo scollegamento precedente. La nuova app personale Creator ha archivio separato e non è ancora installata sul Samsung. Nessun progetto è stato cancellato. Il [report del ritorno del telefono](evidence/samsung-recorder-011.json) comprende la nuova ripresa e distingue questa combinazione verificata dalle prove hardware ancora aperte.
+Ricollegare via USB e sbloccare il Samsung. Conservare un nuovo backup completo, installare la candidata C nella stessa Creator · test senza disinstallarla e verificare gli hash degli originali. Poi completare frontale e posteriore, in verticale e nei due orientamenti orizzontali, con scena riconoscibile e testo, confrontando preview e file salvato dopo l’ultima modifica. Controllare tocchi AF/AE e pannelli sovrapposti.
 
-Il codice è stato scritto dagli agenti Sol 6.1 Max `domain_data`, `media_engine` e `app_ui`, revisionato da `audit_storage`, `audit_standards` e `audit_spec`, integrato e verificato dal coordinatore. Non risultano rilievi bloccanti aperti nel perimetro verificabile senza telefono. Titoli, musica separata, PiP, 4K/HDR e sottotitoli restano nelle fasi successive del [piano](PLAN.md).
+La matrice più ampia di [SAMSUNG-ACCEPTANCE.md](SAMSUNG-ACCEPTANCE.md), inclusi sincronizzazione audiovisiva reale, interruzioni e durata, resta distinta da questi test di rotazione. La candidata personale ha archivio separato e non è installata sul telefono. Titoli, musica separata, PiP, 4K/HDR e sottotitoli restano nelle fasi successive del [piano](PLAN.md).

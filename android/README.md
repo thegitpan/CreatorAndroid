@@ -2,7 +2,7 @@
 
 Applicazione Android indipendente ispirata al flusso di registrazione e montaggio di [YouRec](https://github.com/antirez/YouRecApp). Mantiene nel fork il codice iOS e la sua licenza; l'app Android usa Kotlin, Compose, CameraX e Media3. Nome e icona sono distinti dall'app originale.
 
-La candidata **0.1.1** riprogetta il recorder sul riferimento Samsung Video Pro: anteprima a tutta schermata, comandi sovrapposti e REC circolare sempre raggiungibile, senza scorrimento. Requisiti e verifiche dell'aggiornamento sono in [RECORDER-UX.md](docs/RECORDER-UX.md). Sul Samsung sono riusciti la prima registrazione posteriore e i test del motore multimediale della prima versione; la 0.1.1 è ora installata e verificata per la ripresa posteriore verticale 1080p SDR, con confronto fra preview e filmato. Le altre combinazioni hardware restano da verificare. Stato, prove precedenti e audit sono registrati in [STATUS.md](docs/STATUS.md), [EVIDENCE.md](docs/EVIDENCE.md) e [AUDIT.md](docs/AUDIT.md).
+La candidata **0.1.2** mantiene il recorder sul riferimento Samsung Video Pro: anteprima a tutta schermata, comandi sovrapposti e REC sempre raggiungibile senza scorrere. Interviene sul percorso dell’anteprima frontale non specchiata; 100 test locali passati. **La verifica fisica della candidata finale resta aperta:** il Samsung si è scollegato prima dell’installazione dell’ultimo APK. Le versioni precedenti hanno riprodotto l’inversione della preview frontale in orizzontale, pur con file salvato diritto. Stato esatto in [STATUS.md](docs/STATUS.md), requisito e diagnosi in [RECORDER-UX.md](docs/RECORDER-UX.md), [matrice fisica](docs/evidence/samsung-camera-matrix.json).
 
 ## Flusso disponibile
 
