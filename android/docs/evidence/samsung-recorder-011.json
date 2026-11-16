@@ -13,7 +13,7 @@
     "fontScale": 1.0,
     "automaticRotation": true
   },
-  "status": "installation-and-idle-ui-verified",
+  "status": "rear-portrait-recorder-verified",
   "backup": {
     "completeFilesAndSharedPreferences": true,
     "projects": 3,
@@ -54,20 +54,71 @@
     "overlayControlsInsideVideo": true,
     "scrollRequired": false,
     "actualProfile": "1080p, 1920x1080, rotation 90 degrees, SDR, requested 30fps",
-    "newCaptureStarted": false
+    "newCaptureStarted": true,
+    "publicRecordAndPauseUsed": true,
+    "activeAndIdleControlBoundsEqual": true,
+    "activeRecordButtonBoundsPx": [
+      422,
+      1854,
+      658,
+      2090
+    ],
+    "savedOnce": true,
+    "captureLedgerDelta": 1,
+    "cameraClosedUsingPublicMontaControl": true
   },
   "acceptance": {
     "complete": false,
+    "rear1080pSdrPortraitRecorder": "passed for idle, REC, pause/save and preview/file comparison",
     "remaining": [
-      "Compare new recorded movie against real preview",
-      "Active REC and pause/resume UI on Samsung",
       "Front camera and landscape",
-      "Remaining broader hardware acceptance matrix"
+      "Additional pause/resume and interruption cases",
+      "Objective real audio/video synchronization",
+      "Long-duration and remaining broader hardware acceptance matrix"
     ]
   },
   "privacy": {
     "serialAndUserProjectNamesPublished": false,
     "mediaAndCompleteArchivesTrackedInGit": false
   },
-  "localEvidence": "android/.qa/evidence/samsung/20261116-ui011/"
+  "localEvidence": "android/.qa/evidence/samsung/20261116-ui011/",
+  "rearPortraitCapture": {
+    "durationUs": 4864600,
+    "codec": "h264",
+    "codedWidth": 1920,
+    "codedHeight": 1080,
+    "appRotationDegrees": 90,
+    "ffprobeRotationDegrees": -90,
+    "displayWidth": 1080,
+    "displayHeight": 1920,
+    "averageFps": 30.012745,
+    "audioCodec": "aac",
+    "audioSampleRate": 48000,
+    "audioChannels": 2,
+    "audioMeanDbFS": -44.3,
+    "audioPeakDbFS": -25.7,
+    "sha256": "f2ddcc7f86214e04ba7c0a9a6827cb259387b1f09d550b62cd59de377ad0296e",
+    "sha256MatchesManifest": true,
+    "fullMovieDecodedWithoutErrors": true,
+    "savedFrameComparedToLivePreview": true,
+    "uprightTextAndScene": true,
+    "obviousCropStretchOrMirrorMismatchObserved": false,
+    "uiOverlaysAbsentFromMovie": true,
+    "avSyncMeasured": false
+  },
+  "preservationAfterCapture": {
+    "existingOriginalFilesCompared": 3,
+    "allExistingOriginalFilesUnchanged": true,
+    "otherProjectFilesCompared": 11,
+    "allOtherProjectFilesUnchanged": true,
+    "oldQaSourcesAndLedgerUnchanged": true,
+    "onlyOneNewQaSourceAndRevisionAdded": true,
+    "noProjectDeleted": true
+  },
+  "backupAfterCapture": {
+    "files": 19,
+    "bytes": 147732855,
+    "verifiedAgainstDeviceSha256": true,
+    "archiveSha256": "72e681936810a299bdf1f1115025199e3f3a76b8d1aaf323f3fca402dc023b74"
+  }
 }

@@ -53,7 +53,7 @@
   "layoutReviews": {
     "standards": "closed",
     "spec": "closed after sensor-coherent screenshots",
-    "physicalSamsungAcceptance": "pending"
+    "physicalSamsungAcceptance": "rear portrait passed; broader matrix pending"
   },
   "compactViewport": {
     "widthDp": 600,
@@ -213,10 +213,13 @@
     "sha256MatchesCommittedOriginal": true
   },
   "samsungUpdate": {
-    "status": "installation-and-idle-ui-verified",
+    "status": "rear-portrait-recorder-verified",
     "report": "android/docs/evidence/samsung-recorder-011.json",
     "installed": true,
     "allExistingProjectFilesPreserved": true,
-    "fullHardwareAcceptanceComplete": false
+    "fullHardwareAcceptanceComplete": false,
+    "rearPortraitPreviewAndSavedMovieCompared": true,
+    "recAndPauseAlwaysVisibleOnDevice": true,
+    "singleSavedQaTakeDurationUs": 4864600
   }
 }
