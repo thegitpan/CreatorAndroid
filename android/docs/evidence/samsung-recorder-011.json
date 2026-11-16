@@ -1,0 +1,73 @@
+{
+  "date": "2026-11-16",
+  "version": "0.1.1-debug",
+  "versionCode": 2,
+  "package": "it.panebarco.creator.debug",
+  "productionSourceCommit": "8793f59c477d72eb58f331e9e407e5291431ae16",
+  "apkSha256": "8ce64b17a71dc38f47b9241a1414a188ea66a5e17828be42b5c5e809715e4555",
+  "device": {
+    "model": "SM-S948B",
+    "androidVersion": "17",
+    "apiLevel": 37,
+    "securityPatch": "2026-10-05",
+    "fontScale": 1.0,
+    "automaticRotation": true
+  },
+  "status": "installation-and-idle-ui-verified",
+  "backup": {
+    "completeFilesAndSharedPreferences": true,
+    "projects": 3,
+    "files": 17,
+    "bytes": 135481044,
+    "verifiedAgainstDeviceSha256": true,
+    "archiveSha256": "3bf9b7dcf30cca0a419463ef9712a2f6e1ef77b6bc7d3799091f916c58195023"
+  },
+  "upgrade": {
+    "inPlace": true,
+    "uninstalled": false,
+    "oldVersionCode": 1,
+    "newVersionCode": 2,
+    "all17FilesIdenticalImmediatelyAfterInstall": true,
+    "coldLaunchSucceeded": true,
+    "all3ProjectsVisible": true,
+    "all15ProjectFilesUnchangedAfterLaunch": true,
+    "changedPlatformMetadataAfterLaunch": [
+      "files/profileInstalled",
+      "shared_prefs/android.app.ActivityThread.IDS.xml"
+    ]
+  },
+  "recorder": {
+    "portraitIdleLayoutVisuallyChecked": true,
+    "realRearPreviewVisible": true,
+    "publicContinueControlUsed": true,
+    "recordControlVisibleAndEnabled": true,
+    "recordButtonBoundsPx": [
+      422,
+      1854,
+      658,
+      2090
+    ],
+    "screenshotSizePx": [
+      1080,
+      2340
+    ],
+    "overlayControlsInsideVideo": true,
+    "scrollRequired": false,
+    "actualProfile": "1080p, 1920x1080, rotation 90 degrees, SDR, requested 30fps",
+    "newCaptureStarted": false
+  },
+  "acceptance": {
+    "complete": false,
+    "remaining": [
+      "Compare new recorded movie against real preview",
+      "Active REC and pause/resume UI on Samsung",
+      "Front camera and landscape",
+      "Remaining broader hardware acceptance matrix"
+    ]
+  },
+  "privacy": {
+    "serialAndUserProjectNamesPublished": false,
+    "mediaAndCompleteArchivesTrackedInGit": false
+  },
+  "localEvidence": "android/.qa/evidence/samsung/20261116-ui011/"
+}

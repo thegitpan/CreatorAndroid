@@ -1,6 +1,6 @@
 # Stato della candidata personale 0.1.1
 
-Aggiornato il 16 novembre 2026. La 0.1.1 sostituisce il recorder con una camera a tutta schermata: comandi sovrapposti, REC circolare bianco/rosso sempre visibile e nessuno scorrimento per registrare. Segue il riferimento Samsung Video Pro fornito dall'utente. Registrazione, montaggio ed export sono verificati con media sintetici ed emulatori. **L'accettazione sul Samsung resta aperta**: la nuova UI non è ancora installata sul telefono. Requisiti, audit visivo, prove e limiti dell'aggiornamento sono in [RECORDER-UX.md](RECORDER-UX.md).
+Aggiornato il 16 novembre 2026. La 0.1.1 sostituisce il recorder con una camera a tutta schermata: comandi sovrapposti, REC circolare bianco/rosso sempre visibile e nessuno scorrimento per registrare. Segue il riferimento Samsung Video Pro fornito dall'utente. Registrazione, montaggio ed export sono verificati con media sintetici ed emulatori. **Creator · test 0.1.1 è installata sul Samsung**: backup aggiornato verificato, tre progetti conservati e nuova UI controllata in verticale con anteprima reale. L’accettazione delle nuove riprese resta aperta. Requisiti, audit visivo, prove e limiti dell'aggiornamento sono in [RECORDER-UX.md](RECORDER-UX.md).
 
 ## Consegna
 
@@ -29,6 +29,8 @@ Camera e render pesanti si escludono prima dell'avvio. I temporanei conservano l
 | Audit indipendenti Standards e Spec | Rilievi iniziali e successivi ricontrollati; nessun blocco residuo nel codice candidato |
 | Confronto indipendente sync su sei marcatori | Scarto A/V massimo 30,011 ms, soglia 33,334 ms |
 | Aggiornamento personale 0.1.0 → 0.1.1, su emulatore | 15 file identici subito dopo l'installazione; gli 11 file dei progetti restano identici dopo l'avvio, due progetti visibili |
+| Aggiornamento Samsung 0.1.0 → 0.1.1 | Backup completo di 17 file verificato contro il telefono; tutti identici subito dopo l’installazione; 15 file dei tre progetti invariati dopo l’avvio |
+| Recorder Samsung in verticale, stato pronto | Anteprima posteriore reale e controlli sovrapposti visibili, REC abilitato senza scorrimento; confronto con nuova ripresa ancora da completare |
 | Firma, allineamento APK/native library a 16 KiB | Verificati |
 
 I risultati della 0.1.1 sono nel [report strutturato](evidence/recorder-pro.json). [EVIDENCE.md](EVIDENCE.md), [AUDIT.md](AUDIT.md) e [REVIEW.md](REVIEW.md) conservano le prove e gli audit della baseline 0.1.0. La pipeline GitHub esegue build su Linux e test API 35 x86_64; le ripetizioni su ambienti diversi non aumentano il conteggio dei 92 casi distinti.
@@ -44,6 +46,6 @@ I risultati della 0.1.1 sono nel [report strutturato](evidence/recorder-pro.json
 
 ## Prossimo passaggio necessario
 
-Quando il telefono sarà nuovamente disponibile, riprendere [SAMSUNG-ACCEPTANCE.md](SAMSUNG-ACCEPTANCE.md): ricollegare e sbloccare il dispositivo, acquisire un backup aggiornato e installare Creator · test 0.1.1 in-place. La nuova app personale Creator ha archivio separato e non è ancora installata sul Samsung. Il backup precedente resta sul Mac, ma non comprende eventuali nuove riprese successive allo scollegamento. Nessun progetto è stato cancellato.
+Completare il confronto fra la nuova anteprima e una ripresa salvata secondo [SAMSUNG-ACCEPTANCE.md](SAMSUNG-ACCEPTANCE.md). L’aggiornamento di Creator · test è già riuscito: il nuovo backup comprende anche i progetti aggiunti dopo lo scollegamento precedente. La nuova app personale Creator ha archivio separato e non è ancora installata sul Samsung. Nessun progetto è stato cancellato. Il [report del ritorno del telefono](evidence/samsung-recorder-011.json) distingue installazione e UI verificate dalle prove di registrazione ancora aperte.
 
 Il codice è stato scritto dagli agenti Sol 6.1 Max `domain_data`, `media_engine` e `app_ui`, revisionato da `audit_storage`, `audit_standards` e `audit_spec`, integrato e verificato dal coordinatore. Non risultano rilievi bloccanti aperti nel perimetro verificabile senza telefono. Titoli, musica separata, PiP, 4K/HDR e sottotitoli restano nelle fasi successive del [piano](PLAN.md).

@@ -211,5 +211,12 @@
     "hasAudio": false,
     "durationUs": 4430800,
     "sha256MatchesCommittedOriginal": true
+  },
+  "samsungUpdate": {
+    "status": "installation-and-idle-ui-verified",
+    "report": "android/docs/evidence/samsung-recorder-011.json",
+    "installed": true,
+    "allExistingProjectFilesPreserved": true,
+    "fullHardwareAcceptanceComplete": false
   }
 }

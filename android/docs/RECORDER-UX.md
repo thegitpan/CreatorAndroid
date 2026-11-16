@@ -16,7 +16,7 @@ Richiesta del 16 novembre 2026, successiva alla candidata 0.1.0 (`73eeafa`). L'u
 
 Partire dalla baseline indicata, aggiornare le regressioni al requisito overlay (la vecchia asserzione di non sovrapposizione è ora errata). Testare gesti reali REC/Pausa e apertura dei comandi senza helper che scorrano per recuperarli. Conservare screenshot emulatori idle/REC, verticale/orizzontale e testo 150%, controlli aperti, permessi/errori. Il coordinatore esamina le immagini, non soltanto l'esito dei test.
 
-La versione diventa 0.1.1/code 2, con la stessa firma e application ID per aggiornamento in-place. L'installazione Samsung esistente contiene una ripresa: non disinstallarla né usarla per la suite strumentale. L'accettazione hardware resta aperta finché il nuovo recorder non è confrontato sul dispositivo con il file salvato, come richiesto da CAMERA-QA.md. Il telefono non è attualmente disponibile; continuare tutte le verifiche indipendenti.
+La versione diventa 0.1.1/code 2, con la stessa firma e application ID per aggiornamento in-place. L'installazione Samsung esistente contiene una ripresa: non disinstallarla né usarla per la suite strumentale. L'accettazione hardware resta aperta finché il nuovo recorder non è confrontato sul dispositivo con il file salvato, come richiesto da CAMERA-QA.md. Durante lo sviluppo il telefono non era disponibile; sono state completate le verifiche indipendenti. Il successivo aggiornamento sul Samsung è registrato in [samsung-recorder-011.json](evidence/samsung-recorder-011.json).
 
 ## Risultato della revisione e prove
 
@@ -30,7 +30,7 @@ Build debug/release firmata, 68 test JVM e lint sono passati. Le suite Android c
 
 L'aggiornamento personale 0.1.0 → 0.1.1 su emulatore mantiene identici tutti i 15 file confrontati subito dopo l'installazione; dopo l'avvio gli 11 file dei progetti restano identici e i due progetti sono visibili. Cambiano soltanto due metadati di profilazione AndroidX, come previsto all'aggiornamento del pacchetto. Entrambe le firme, personale e test, corrispondono alle precedenti; gli APK superano il controllo di allineamento ZIP a 16 KiB.
 
-Risultati finali delle suite Android, commit verificato e CI sono registrati in [recorder-pro.json](evidence/recorder-pro.json). I report completi, i video e gli screenshot restano locali in `.qa/evidence/recorder-pro/`. La consegna è in `outputs/Creator-0.1.1/`, con APK test per aggiornare l'installazione esistente e APK personale per l'archivio separato. Il Samsung non è stato aggiornato durante questo lavoro.
+Risultati finali delle suite Android, commit verificato e CI sono registrati in [recorder-pro.json](evidence/recorder-pro.json). I report completi, i video e gli screenshot restano locali in `.qa/evidence/recorder-pro/`. La consegna è in `outputs/Creator-0.1.1/`, con APK test per aggiornare l'installazione esistente e APK personale per l'archivio separato. Alla prima consegna il Samsung non era ancora aggiornato; successivamente la 0.1.1 è stata installata in-place con verifica degli originali e della nuova UI in stato pronto. Il confronto con una nuova ripresa resta aperto.
 
 La [CI finale](https://github.com/thegitpan/CreatorAndroid/actions/runs/43905842061), commit `8b15315`, ha completato entrambi i job con successo: build, JVM e lint su Linux, più 14 test app e 10 media su Android API 35 x86_64. Il commit successivo alla produzione modifica soltanto il selettore del test dei dettagli. Gli APK consegnati restano quelli della produzione `8793f59`.
 
