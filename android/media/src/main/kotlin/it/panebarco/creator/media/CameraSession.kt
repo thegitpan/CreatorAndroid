@@ -10,11 +10,14 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.TotalCaptureResult
+import android.hardware.display.DisplayManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Range
 import android.view.OrientationEventListener
 import android.view.Surface
+import android.view.View
 import androidx.annotation.MainThread
 import androidx.camera.core.Camera
 import androidx.camera.core.MeteringPoint
@@ -102,8 +105,10 @@ class CameraSession(context: Context) {
     private val finalizationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var closed = false
     private var bindGeneration = 0L
-    private var targetRotation = Surface.ROTATION_0
+    private var rotations = CameraRotationTargets(Surface.ROTATION_0)
     private val lockHandler = Handler(Looper.getMainLooper())
+    private val displayManager = this.context.getSystemService(DisplayManager::class.java)
+    private var listeningToDisplay = false
     private var focusLockRequested = false
     private var focusLockApplied = false
     private var exposureLockRequested = false
@@ -118,20 +123,25 @@ class CameraSession(context: Context) {
     }
     private val orientationListener = object : OrientationEventListener(context) {
         override fun onOrientationChanged(orientation: Int) {
-            if (orientation == ORIENTATION_UNKNOWN || mutableState.value.starting || mutableState.value.recording || mutableState.value.finalizing) return
-            val rotation = when (orientation) {
-                in 45..134 -> Surface.ROTATION_270
-                in 135..224 -> Surface.ROTATION_180
-                in 225..314 -> Surface.ROTATION_90
-                else -> Surface.ROTATION_0
-            }
-            if (rotation != targetRotation) {
-                targetRotation = rotation
-                preview?.targetRotation = rotation
-                capture?.targetRotation = rotation
+            if (closed) return
+            if (rotations.sensorChanged(orientation, mutableState.value)) {
+                capture?.targetRotation = rotations.capture
                 updateQuality()
             }
         }
+    }
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) = Unit
+        override fun onDisplayRemoved(displayId: Int) = Unit
+        override fun onDisplayChanged(displayId: Int) {
+            if (previewView?.display?.displayId == displayId) syncPreviewRotation()
+        }
+    }
+    private val previewAttachListener = object : View.OnAttachStateChangeListener {
+        override fun onViewAttachedToWindow(view: View) {
+            if (previewView === view) syncPreviewRotation()
+        }
+        override fun onViewDetachedFromWindow(view: View) = Unit
     }
 
     @MainThread
@@ -145,13 +155,19 @@ class CameraSession(context: Context) {
             fail("Attendi il salvataggio della ripresa prima di cambiare videocamera.")
             return
         }
+        stopRotationTracking()
         unbindOwnedUseCases()
         this.owner?.lifecycle?.removeObserver(lifecycleObserver)
         this.owner = owner
         this.previewView = previewView
         owner.lifecycle.addObserver(lifecycleObserver)
+        // CameraX 1.6.2's TextureView rotation assumes a mirrored front stream.
+        // Use the display's SurfaceView path only where Preview can disable that mirror.
+        previewView.implementationMode = if (front && Build.VERSION.SDK_INT >= 33) {
+            PreviewView.ImplementationMode.PERFORMANCE
+        } else PreviewView.ImplementationMode.COMPATIBLE
         previewView.scaleType = PreviewView.ScaleType.FIT_CENTER
-        targetRotation = previewView.display?.rotation ?: Surface.ROTATION_0
+        rotations = CameraRotationTargets(previewView.display?.rotation ?: Surface.ROTATION_0)
         mutableState.update { it.copy(ready = false, front = front, error = null) }
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             fail("Consenti l'accesso alla fotocamera per registrare un video.")
@@ -164,6 +180,10 @@ class CameraSession(context: Context) {
             try {
                 provider = future.get()
                 bindAvailableCamera(front)
+                displayManager.registerDisplayListener(displayListener, lockHandler)
+                listeningToDisplay = true
+                previewView.addOnAttachStateChangeListener(previewAttachListener)
+                syncPreviewRotation()
                 if (orientationListener.canDetectOrientation()) orientationListener.enable()
             } catch (error: Exception) {
                 fail("Impossibile avviare la fotocamera. Chiudi altre app che la usano e riprova.")
@@ -175,13 +195,14 @@ class CameraSession(context: Context) {
         val provider = requireNotNull(provider)
         val owner = requireNotNull(owner)
         val view = requireNotNull(previewView)
+        view.display?.rotation?.let(rotations::displayChanged)
         val hasFront = provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
         val hasBack = provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA)
         mutableState.update { it.copy(hasFrontCamera = hasFront, hasBackCamera = hasBack) }
         require(if (front) hasFront else hasBack) { "La fotocamera scelta non è disponibile." }
         unbindOwnedUseCases()
         val previewBuilder = Preview.Builder()
-            .setTargetRotation(targetRotation)
+            .setTargetRotation(rotations.preview)
             .setMirrorMode(MirrorMode.MIRROR_MODE_OFF)
             .setResolutionSelector(
                 ResolutionSelector.Builder()
@@ -213,7 +234,7 @@ class CameraSession(context: Context) {
             .setQualitySelector(QualitySelector.fromOrderedList(listOf(Quality.FHD, Quality.HD, Quality.SD), FallbackStrategy.lowerQualityOrHigherThan(Quality.FHD)))
             .build()
         val capture = VideoCapture.Builder(recorder)
-            .setTargetRotation(targetRotation)
+            .setTargetRotation(rotations.capture)
             .setTargetFrameRate(Range(30, 30))
             .setDynamicRange(DynamicRange.SDR)
             .setMirrorMode(MirrorMode.MIRROR_MODE_OFF)
@@ -248,6 +269,24 @@ class CameraSession(context: Context) {
             updateQuality()
         }
         updateQuality()
+    }
+
+    private fun syncPreviewRotation() {
+        if (closed) return
+        val display = previewView?.display ?: return
+        if (rotations.displayChanged(display.rotation)) {
+            preview?.targetRotation = rotations.preview
+            updateQuality()
+        }
+    }
+
+    private fun stopRotationTracking() {
+        orientationListener.disable()
+        if (listeningToDisplay) {
+            displayManager.unregisterDisplayListener(displayListener)
+            listeningToDisplay = false
+        }
+        previewView?.removeOnAttachStateChangeListener(previewAttachListener)
     }
 
     @MainThread
@@ -367,7 +406,7 @@ class CameraSession(context: Context) {
         val current = camera ?: return
         val view = previewView ?: return
         if (!mutableState.value.canFocus || !x.isFinite() || !y.isFinite() || view.width == 0 || view.height == 0) return
-        val point = view.meteringPointFactory.createPoint(x.coerceIn(0f, view.width.toFloat()), y.coerceIn(0f, view.height.toFloat()))
+        val point = PreviewMetering.createPoint(view, mutableState.value.front, x, y)
         lastFocusPoint = point
         if (focusLockRequested) {
             setFocusLocked(true)
@@ -461,7 +500,7 @@ class CameraSession(context: Context) {
         if (closed) return
         closed = true
         bindGeneration++
-        orientationListener.disable()
+        stopRotationTracking()
         lockHandler.removeCallbacksAndMessages(null)
         owner?.lifecycle?.removeObserver(lifecycleObserver)
         stop()

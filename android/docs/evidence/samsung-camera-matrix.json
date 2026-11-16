@@ -1,0 +1,159 @@
+{
+  "date": "2026-11-16",
+  "device": {
+    "model": "SM-S948B",
+    "apiLevel": 37
+  },
+  "status": "final-candidate-installed-awaiting-physical-matrix",
+  "baselineVersion": "0.1.1/code2",
+  "baselineProductionCommit": "8793f59c477d72eb58f331e9e407e5291431ae16",
+  "observations": [
+    {
+      "cameraId": "1",
+      "orientation": "portrait",
+      "screenWidth": 1080,
+      "screenHeight": 2340,
+      "profile": "Profilo video. 1080p \u00b7 1920\u00d71080 \u00b7 rotazione 270\u00b0 \u00b7 SDR \u00b7 richiesti 30 fps",
+      "recordBounds": [
+        422,
+        1854,
+        658,
+        2090
+      ],
+      "recordVisibleDuringCapture": true,
+      "idleRecordingSavedButtonBoundsEqual": true,
+      "publicRecordAndPauseUsed": true,
+      "clipsBefore": 2,
+      "clipsAfter": 3,
+      "durationUs": 4965400,
+      "codec": "h264",
+      "codedWidth": 1920,
+      "codedHeight": 1080,
+      "appRotationDegrees": 270,
+      "ffprobeRotationDegrees": 90,
+      "displayWidth": 1080,
+      "displayHeight": 1920,
+      "averageFps": 30.00772010696264,
+      "audioCodec": "aac",
+      "audioSampleRate": 48000,
+      "audioChannels": 2,
+      "audioMeanDbFS": -31.2,
+      "audioPeakDbFS": -7.9,
+      "sha256": "a948bca72e7b31a0cf921d739697368a16a210647fdc959bd04abdff2a17ed2a",
+      "sha256MatchesManifest": true,
+      "fullMovieDecodedWithoutErrors": true,
+      "exactlyOneNewTake": true,
+      "previewFileVisualReview": "passed",
+      "imageComparison": {
+        "0": 0.7787332972850504,
+        "180": -0.2788684968504235
+      }
+    },
+    {
+      "cameraId": "1",
+      "orientation": "landscape",
+      "screenWidth": 2340,
+      "screenHeight": 1080,
+      "profile": "Profilo video. 1080p \u00b7 1920\u00d71080 \u00b7 rotazione 0\u00b0 \u00b7 SDR \u00b7 richiesti 30 fps",
+      "recordBounds": [
+        1854,
+        464,
+        2090,
+        700
+      ],
+      "recordVisibleDuringCapture": true,
+      "idleRecordingSavedButtonBoundsEqual": true,
+      "publicRecordAndPauseUsed": true,
+      "clipsBefore": 3,
+      "clipsAfter": 4,
+      "durationUs": 5165400,
+      "codec": "h264",
+      "codedWidth": 1920,
+      "codedHeight": 1080,
+      "appRotationDegrees": 0,
+      "ffprobeRotationDegrees": 0,
+      "displayWidth": 1920,
+      "displayHeight": 1080,
+      "averageFps": 30.007614835592687,
+      "audioCodec": "aac",
+      "audioSampleRate": 48000,
+      "audioChannels": 2,
+      "audioMeanDbFS": -34.9,
+      "audioPeakDbFS": -20.8,
+      "sha256": "9f23268106dcb3ebe41d1eee1ce3548a024f8d2fb5ea49b1ce462345458f1f1f",
+      "sha256MatchesManifest": true,
+      "fullMovieDecodedWithoutErrors": true,
+      "exactlyOneNewTake": true,
+      "previewFileVisualReview": "failed-preview-rotated-180",
+      "imageComparison": {
+        "0": -0.16308456640883198,
+        "180": 0.8383835325045663
+      }
+    }
+  ],
+  "diagnosis": {
+    "previewWrongByDegrees": 180,
+    "savedMovieUpright": true,
+    "sensorOrientationMappingAlreadyCorrect": true,
+    "confirmedDisplayRotationDegrees": 90,
+    "activeFrontSensorOrientationDegrees": 270,
+    "suspectedRootCause": "CameraX1.6.2 TextureView correction assumes mirrored-front rotation even when the stream is explicitly unmirrored",
+    "cameraX1_7_rc02ContainsSameCorrection": true,
+    "primarySource": "https://android.googlesource.com/platform/frameworks/support/+/androidx-main/camera/camera-view/src/main/java/androidx/camera/view/PreviewTransformation.java"
+  },
+  "candidateA": {
+    "version": "0.1.2/code3",
+    "change": "Use PERFORMANCE SurfaceView-capable PreviewView implementation instead of COMPATIBLE TextureView",
+    "apkSha256": "1017100a95dca4aa16e5e9794084e1a27b8a3fc412bdc38a8b703fb40969f4e9",
+    "jvmTestsPassed": 68,
+    "lintPassed": true,
+    "buildPassed": true,
+    "installedInPlace": true,
+    "all23DataFilesIdenticalImmediatelyAfterInstall": true,
+    "nativeLibrariesUnchanged": 12,
+    "physicalVerification": "front upright per user; rear inversion reported; global backend candidate rejected"
+  },
+  "backupBeforeUpdate": {
+    "files": 23,
+    "bytes": 171480577,
+    "verifiedAgainstDeviceSha256": true,
+    "all4PriorOriginalFilesUnchanged": true,
+    "all11OtherProjectFilesUnchanged": true
+  },
+  "remaining": [
+    "Six final front/rear portrait and landscape poses",
+    "Off-center front metering and overlays",
+    "Real synchronization and long-duration broader matrix"
+  ],
+  "fullHardwareAcceptanceComplete": false,
+  "privateEvidenceDirectory": "android/.qa/evidence/samsung/20261116-camera-matrix/",
+  "candidateB": {
+    "version": "0.1.2/code3",
+    "artifacts": [
+      {
+        "file": "Creator-test-0.1.2.apk",
+        "bytes": 77018822,
+        "sha256": "f0ad2c4bcfd781f4267bc801ecb80bbf44e57aa0cfe758618af436b568e46d0d",
+        "unchangedNativeLibraries": 12
+      },
+      {
+        "file": "Creator-0.1.2.apk",
+        "bytes": 56430732,
+        "sha256": "4261b1e1b6dd490d04d7ff2312aa93c85704f987b7ad93bb3b8730ab2561753a",
+        "unchangedNativeLibraries": 12
+      }
+    ],
+    "hybridBackend": true,
+    "previewFollowsDisplay": true,
+    "captureFrozenDuringTake": true,
+    "determinantAwareFrontMetering": true,
+    "jvmTestsPassed": 71,
+    "lintPassed": true,
+    "signedBuildsPassed": true,
+    "actualCameraXMeteringFactoryTestsPassedOnAPI36": 4,
+    "installedInPlace": true,
+    "all25DataFilesIdenticalImmediatelyAfterInstall": true,
+    "projectsPreserved": 4,
+    "physicalMatrix": "pending"
+  }
+}

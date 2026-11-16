@@ -148,7 +148,6 @@ object ContextCompatPermission { fun missing(context: Context, permission: Strin
     Box(modifier.background(Color.Black).testTag("recorder_preview_pane"), contentAlignment = Alignment.Center) {
         if (allowed) AndroidView(
             factory = { PreviewView(it).apply {
-                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                 scaleType = PreviewView.ScaleType.FIT_CENTER
                 setOnTouchListener { view, event ->
                     if (event.action == MotionEvent.ACTION_UP) {
