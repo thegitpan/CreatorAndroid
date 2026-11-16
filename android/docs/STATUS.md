@@ -1,6 +1,6 @@
 # Stato della candidata personale 0.1.2
 
-Aggiornato il 16 novembre 2026. La candidata C 0.1.2/code 3 interviene sul percorso dell’anteprima frontale non specchiata e separa la rotazione del display da quella del segmento registrato. **100 test locali passati; accettazione fisica ancora aperta.** Il Samsung si è scollegato prima dell’installazione della candidata C. Sul telefono è rimasta la candidata B, con lo stesso numero di versione ma APK diverso, nella quale il difetto frontale è stato ancora osservato. Non considerare il numero di versione una prova di aggiornamento alla build finale.
+Aggiornato il 16 novembre 2026. La candidata C 0.1.2/code 3 interviene sul percorso dell’anteprima frontale non specchiata e separa la rotazione del display da quella del segmento registrato. **100 test locali e CI verdi; accettazione fisica ancora aperta.** Il Samsung è stato ricollegato e la candidata C è ora installata in-place: il checksum dell’APK effettivamente sul telefono coincide con `29d2ba0844b38fadc2ecf73979b05fe0596ff494648d295433378bc96ce44ada`. Tutti i 25 file sono identici subito dopo l’aggiornamento. La prima frontale in orizzontale con USB a destra è ora verificata: preview e file diritti e coerenti. La posteriore della stessa posa ha ripreso una scena scura e resta non conclusiva; sono richieste le altre pose della matrice.
 
 ## Consegna
 
@@ -40,6 +40,6 @@ Le candidate A e B non sono state accettate: anche il passaggio a SurfaceView ha
 
 ## Prossimo passaggio necessario
 
-Ricollegare via USB e sbloccare il Samsung. Conservare un nuovo backup completo, installare la candidata C nella stessa Creator · test senza disinstallarla e verificare gli hash degli originali. Poi completare frontale e posteriore, in verticale e nei due orientamenti orizzontali, con scena riconoscibile e testo, confrontando preview e file salvato dopo l’ultima modifica. Controllare tocchi AF/AE e pannelli sovrapposti.
+Backup completo, aggiornamento C e confronto degli originali sono ora riusciti sul Samsung ricollegato. Completare frontale e posteriore, in verticale e nei due orientamenti orizzontali, con scena riconoscibile e testo, confrontando preview e file salvato dopo l’ultima modifica. Controllare tocchi AF/AE e pannelli sovrapposti.
 
 La matrice più ampia di [SAMSUNG-ACCEPTANCE.md](SAMSUNG-ACCEPTANCE.md), inclusi sincronizzazione audiovisiva reale, interruzioni e durata, resta distinta da questi test di rotazione. La candidata personale ha archivio separato e non è installata sul telefono. Titoli, musica separata, PiP, 4K/HDR e sottotitoli restano nelle fasi successive del [piano](PLAN.md).

@@ -4,7 +4,7 @@
     "model": "SM-S948B",
     "apiLevel": 37
   },
-  "status": "candidate-c-software-verified-awaiting-samsung-reconnection",
+  "status": "candidate-c-installed-physical-matrix-in-progress",
   "baselineVersion": "0.1.1/code2",
   "baselineProductionCommit": "8793f59c477d72eb58f331e9e407e5291431ae16",
   "observations": [
@@ -201,8 +201,8 @@
     "touchDispatchRedFailuresBeforeFix": 3,
     "lintPassed": true,
     "signedBuildsPassed": true,
-    "actualSamsungInstalled": false,
-    "physicalAcceptance": "pending: USB disconnected before candidate C",
+    "actualSamsungInstalled": true,
+    "physicalAcceptance": "in progress after verified APK installation",
     "productionSourceCommit": "7e019ae1e89e372ea47038253bedb652c78e8e96",
     "fullLocalValidation": {
       "distinctPassed": 100,
@@ -258,7 +258,102 @@
       "api35X86_64AppTests": 14,
       "api35X86_64MediaTests": 15
     },
-    "sourceReviews": "root and independent audit: no source blockers; physical gate open"
+    "sourceReviews": "root and independent audit: no source blockers; physical gate open",
+    "samsungUpgrade": {
+      "installedCandidate": "C",
+      "installedApkSha256": "29d2ba0844b38fadc2ecf73979b05fe0596ff494648d295433378bc96ce44ada",
+      "filesCompared": 25,
+      "allDataFilesIdenticalImmediatelyAfterInstall": true,
+      "uninstalled": false
+    },
+    "acceptedPhysicalPoses": [
+      {
+        "cameraId": "1",
+        "orientation": "landscape",
+        "screenWidth": 2340,
+        "screenHeight": 1080,
+        "profile": "Profilo video. 1080p \u00b7 1920\u00d71080 \u00b7 rotazione 0\u00b0 \u00b7 SDR \u00b7 richiesti 30 fps",
+        "recordBounds": [
+          1854,
+          464,
+          2090,
+          700
+        ],
+        "recordVisibleDuringCapture": true,
+        "idleRecordingSavedButtonBoundsEqual": true,
+        "publicRecordAndPauseUsed": true,
+        "clipsBefore": 4,
+        "clipsAfter": 5,
+        "durationUs": 4832100,
+        "codec": "h264",
+        "codedWidth": 1920,
+        "codedHeight": 1080,
+        "appRotationDegrees": 0,
+        "ffprobeRotationDegrees": 0,
+        "displayWidth": 1920,
+        "displayHeight": 1080,
+        "averageFps": 30.00772612718677,
+        "audioCodec": "aac",
+        "audioSampleRate": 48000,
+        "audioChannels": 2,
+        "audioMeanDbFS": -38.1,
+        "audioPeakDbFS": -18.5,
+        "sha256": "ddc7d3060bad0a585c10be27b8dc08727634c002aede42c8cced5945ec4a494a",
+        "sha256MatchesManifest": true,
+        "fullMovieDecodedWithoutErrors": true,
+        "exactlyOneNewTake": true,
+        "previewFileVisualReview": "passed: upright lamp, chandelier and asymmetric room edges match; no crop/stretch/mirror mismatch observed; no readable text in this take",
+        "orientationEvidenceAccepted": true
+      }
+    ],
+    "inconclusivePhysicalPoses": [
+      {
+        "cameraId": "0",
+        "orientation": "landscape",
+        "screenWidth": 2340,
+        "screenHeight": 1080,
+        "profile": "Profilo video. 1080p \u00b7 1920\u00d71080 \u00b7 rotazione 0\u00b0 \u00b7 SDR \u00b7 richiesti 30 fps",
+        "recordBounds": [
+          1854,
+          464,
+          2090,
+          700
+        ],
+        "recordVisibleDuringCapture": true,
+        "idleRecordingSavedButtonBoundsEqual": true,
+        "publicRecordAndPauseUsed": true,
+        "clipsBefore": 5,
+        "clipsAfter": 6,
+        "durationUs": 4897900,
+        "codec": "h264",
+        "codedWidth": 1920,
+        "codedHeight": 1080,
+        "appRotationDegrees": 0,
+        "ffprobeRotationDegrees": 0,
+        "displayWidth": 1920,
+        "displayHeight": 1080,
+        "averageFps": 30.012862655423753,
+        "audioCodec": "aac",
+        "audioSampleRate": 48000,
+        "audioChannels": 2,
+        "audioMeanDbFS": -36.7,
+        "audioPeakDbFS": -19.4,
+        "sha256": "e24ba9c565b2b24b21786e0ddc634531d86865a443b7d79dbf92bc9e9f17d982",
+        "sha256MatchesManifest": true,
+        "fullMovieDecodedWithoutErrors": true,
+        "exactlyOneNewTake": true,
+        "previewFileVisualReview": "inconclusive: dark fabric scene has no reliable upright reference",
+        "orientationEvidenceAccepted": false
+      }
+    ],
+    "progressBackup": {
+      "backupVerifiedAgainstDevice": true,
+      "files": 27,
+      "bytes": 193169693,
+      "existingOriginalsUnchanged": 6,
+      "otherProjectFilesUnchanged": 13,
+      "qaLedger": 6
+    }
   },
   "lastVerifiedPhoneBackup": {
     "files": 25,
