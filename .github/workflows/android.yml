@@ -42,6 +42,7 @@ jobs:
         with:
           api-level: 35
           arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-front emulated -camera-back emulated
           disable-animations: true
           working-directory: android
           script: |

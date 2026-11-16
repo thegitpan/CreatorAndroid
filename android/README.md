@@ -27,10 +27,11 @@ La build debug si chiama **Creator · test** e usa `it.panebarco.creator.debug`.
 Per i test strumentali serve anche `ffmpeg`. I campioni sintetici vengono generati automaticamente sotto `build/`, senza filmati personali o file binari versionati:
 
 ```sh
-ANDROID_SERIAL=emulator-5580 ./gradlew -Pandroid.injected.device.serial=emulator-5580 :app:connectedDebugAndroidTest :media:connectedDebugAndroidTest
+ANDROID_SERIAL=emulator-5580 ./gradlew -Pandroid.injected.device.serial=emulator-5580 :app:connectedDebugAndroidTest
+ANDROID_SERIAL=emulator-5580 ./gradlew -Pandroid.injected.device.serial=emulator-5580 :media:connectedDebugAndroidTest
 ```
 
-Sostituire il seriale con quello del dispositivo di test dedicato. Eseguire i test dell'app e del motore in sequenza sullo stesso emulatore. La suite dell'app modifica temporaneamente risoluzione, densità e dimensione del testo per le regressioni di layout e le ripristina al termine: non eseguirla sul telefono personale con progetti da conservare. I report sono nelle rispettive cartelle `build/reports/`.
+Sostituire il seriale con quello del dispositivo di test dedicato. Eseguire i test dell'app e del motore in sequenza sullo stesso emulatore, avviato con `-camera-front emulated -camera-back emulated` per verificare entrambe le camere. La suite dell'app modifica temporaneamente risoluzione, densità e dimensione del testo per le regressioni di layout e le ripristina al termine: non eseguirla sul telefono personale con progetti da conservare. I report sono nelle rispettive cartelle `build/reports/`.
 
 ## APK personale e firma
 

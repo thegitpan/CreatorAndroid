@@ -26,6 +26,8 @@ La CI della candidata ha inizialmente trovato un timeout nel solo test PCM. Il c
 
 Il test ora apre una Activity dedicata nel solo APK androidTest, attende RESUMED e WindowFocus e la chiude dopo il player. Motore di produzione, AudioTrack reale, timeout di 30 s e tolleranza di 33.334 µs restano invariati. Prova mirata rossa prima e verde dopo; suite completa 10/10 verde, massimo errore PCM 26.007 µs e seek verificato. [Evidenza](evidence/preview-focus-api35.json). Il workflow usa inoltre due invocazioni Gradle sequenziali per app e media. La conferma Linux x86_64 è registrata nel riepilogo delle prove.
 
+La successiva esecuzione ha rilevato che l'AVD predefinito della CI esponeva solo la camera posteriore: il test della frontale trovava correttamente disabilitato il cambio camera. Riprodotto su un AVD API 35 nuovo, a 320×640/densità 160; cambiando soltanto l'avvio con `-camera-front emulated -camera-back emulated`, lo stesso test e poi tutti i 14 test dell'app sono passati. Il workflow dichiara ora entrambe le camere. Codice di produzione, test e viewport sono invariati: [prova prima/dopo](evidence/ci-dual-camera.json).
+
 ## Media e sincronizzazione
 
 - Composizione di input misti: tagli fuori keyframe, video ruotato, segmento senza audio, volume ridotto e muto. Il file risultante è H.264/AAC, geometria visualizzata 1080×1920 e durata video 5.133.333 µs rispetto a 5.133.334 µs attesi. La traccia AAC include padding finale del codec; la sola durata del contenitore non è stata usata come misura di sync. Il rapporto di ampiezza misurato è circa 0,25235 per un gain richiesto di 0,25.
@@ -67,7 +69,9 @@ Dalla cartella `android`, con JDK 17, SDK configurato e FFmpeg disponibile:
   :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest \
   :media:assembleDebugAndroidTest
 ANDROID_SERIAL=SERIALE ./gradlew -Pandroid.injected.device.serial=SERIALE \
-  :app:connectedDebugAndroidTest :media:connectedDebugAndroidTest
+  :app:connectedDebugAndroidTest
+ANDROID_SERIAL=SERIALE ./gradlew -Pandroid.injected.device.serial=SERIALE \
+  :media:connectedDebugAndroidTest
 CREATOR_SIGNING_PROPERTIES=/percorso/privato/release.properties \
   ./gradlew :app:assembleRelease
 ```

@@ -1,0 +1,52 @@
+{
+  "diagnosis": "CI AVD front camera absent; production correctly disables switch_camera",
+  "failure": {
+    "node": "switch_camera",
+    "state": "Disabled",
+    "testLine": 55
+  },
+  "ci": {
+    "api": 35,
+    "abi": "x86_64",
+    "target": "default",
+    "width": 320,
+    "height": 640
+  },
+  "local": {
+    "api": 35,
+    "abi": "arm64-v8a",
+    "target": "google_apis",
+    "width": 320,
+    "height": 640,
+    "densityDpi": 160
+  },
+  "before": {
+    "cameraDevices": 1,
+    "front": "none",
+    "back": "emulated",
+    "focusedOutcome": "FAIL Disabled at line55",
+    "seconds": 8.584
+  },
+  "after": {
+    "cameraDevices": 2,
+    "front": "emulated",
+    "back": "emulated",
+    "focusedOutcome": "PASS",
+    "seconds": 8.277
+  },
+  "fullAppSuite": {
+    "tests": 14,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 61.656
+  },
+  "changedSourceFiles": [
+    ".github/workflows/android.yml"
+  ],
+  "limitation": "Local proof uses API35 arm64 Google APIs; final x86_64 default-image confirmation is tracked in final-test-summary.json. Emulator results do not accept Samsung camera hardware.",
+  "date": "2026-11-16",
+  "failedCiRun": "https://github.com/thegitpan/CreatorAndroid/actions/runs/43883875460",
+  "test": "RecorderLayoutTest.frontSelectionAndASingleActiveTakeSurviveRotationAndCloselySpacedPauseTaps",
+  "productionAndTestCodeChanged": false
+}
