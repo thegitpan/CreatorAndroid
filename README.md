@@ -1,3 +1,16 @@
+# Creator Android
+
+Independent Android derivative of antirez’s YouRecApp, developed for personal use first. **Under active development; Samsung camera acceptance is pending.**
+
+- Android source and build: [`android/`](android/)
+- Development status: [`android/docs/STATUS.md`](android/docs/STATUS.md)
+- Implementation plan: [`android/docs/PLAN.md`](android/docs/PLAN.md)
+- Original provenance and licenses: [`UPSTREAM.md`](UPSTREAM.md), [`LICENSE`](LICENSE)
+
+The YouRec name and icon belong to the upstream author. This is not an official Android release by antirez. The original iOS README follows for reference.
+
+---
+
 # YouRec
 
 YouRec is a native iPhone camera and multitrack video editor for iOS 17 and later. After two years of running a [YouTube channel](https://youtube.com/antirez) and editing my videos in DaVinci Resolve™, I had two frustrations.
