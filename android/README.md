@@ -2,7 +2,7 @@
 
 Applicazione Android indipendente ispirata al flusso di registrazione e montaggio di [YouRec](https://github.com/antirez/YouRecApp). Mantiene nel fork il codice iOS e la sua licenza; l'app Android usa Kotlin, Compose, CameraX e Media3. Nome e icona sono distinti dall'app originale.
 
-La versione personale **0.1.0 è pronta per il test fisico sul Samsung S26**. Sono passati 76 test automatici, build, lint e verifica dell'aggiornamento dell'APK firmato. Build ed emulatori non certificano la videocamera del telefono: risultati e limiti sono registrati in [STATUS.md](docs/STATUS.md), [EVIDENCE.md](docs/EVIDENCE.md) e [AUDIT.md](docs/AUDIT.md).
+La prima versione personale **0.1.0 è realizzata e in accettazione**. Sul Samsung sono riusciti la prima registrazione posteriore e i test del motore multimediale; le prove camera complete restano aperte. Test automatici, build, aggiornamenti firmati e limiti sono registrati in [STATUS.md](docs/STATUS.md), [EVIDENCE.md](docs/EVIDENCE.md) e [AUDIT.md](docs/AUDIT.md). Una build riuscita non certifica sensori, sincronizzazione delle riprese reali o durata.
 
 ## Flusso disponibile
 
@@ -30,7 +30,7 @@ Per i test strumentali serve anche `ffmpeg`. I campioni sintetici vengono genera
 ANDROID_SERIAL=emulator-5580 ./gradlew -Pandroid.injected.device.serial=emulator-5580 :app:connectedDebugAndroidTest :media:connectedDebugAndroidTest
 ```
 
-Sostituire il seriale con quello del dispositivo di test dedicato. Eseguire i test dell'app e del motore in sequenza sullo stesso emulatore. I report sono nelle rispettive cartelle `build/reports/`.
+Sostituire il seriale con quello del dispositivo di test dedicato. Eseguire i test dell'app e del motore in sequenza sullo stesso emulatore. La suite dell'app modifica temporaneamente risoluzione, densità e dimensione del testo per le regressioni di layout e le ripristina al termine: non eseguirla sul telefono personale con progetti da conservare. I report sono nelle rispettive cartelle `build/reports/`.
 
 ## APK personale e firma
 

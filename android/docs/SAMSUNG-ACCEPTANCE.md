@@ -1,10 +1,20 @@
 # Verifica fisica sul Samsung
 
-Stato: **da eseguire**. L'emulatore verifica controlli, salvataggi e media sintetici; non verifica sensori, microfono, sincronizzazione della ripresa, temperatura o comportamento del firmware Samsung. La regola deriva anche da [CAMERA-QA.md](../../docs/CAMERA-QA.md): «Synthetic simulator frames validate layout only».
+Stato al 16 novembre 2026: **in corso, non ancora conclusa**. Il Samsung è collegato e autorizzato; `Creator · test` è installata nell'archivio separato. Le prove sintetiche sul telefono non sostituiscono le riprese reali. La regola deriva anche da [CAMERA-QA.md](../../docs/CAMERA-QA.md): «Synthetic simulator frames validate layout only».
+
+## Evidenza già raccolta
+
+- Dispositivo effettivamente interrogato: Samsung **SM-S948B**, Android 17 / API 37, target dell'app 36, patch di sicurezza 5 ottobre 2026, pagine di memoria da 4 KiB. Nessun numero seriale o identificativo personale è pubblicato.
+- Prima ripresa posteriore verticale: 31,986 s, H.264 High 1920×1080 con rotazione di visualizzazione verticale, circa 30,013 fps medi; AAC-LC 48 kHz stereo. Preview e fotogrammi salvati mostrano la scena riconoscibile correttamente orientata. L'originale e il progetto sono stati conservati integralmente sul Mac; il checksum corrisponde al manifest. Questo non misura ancora la sincronizzazione audiovisiva di un battito di mani.
+- La prima prova ha riprodotto un difetto reale: REC era sotto la parte visibile della schermata. Il nuovo layout mantiene il comando separato dai controlli scorrevoli; la sua accettazione fisica richiede un nuovo confronto preview/file dopo l'ultima modifica.
+- Dieci test del motore multimediale passati sul Samsung con APK di test target 36, senza errori o test saltati. Sono fixture generate e isolate, non registrazioni dei sensori. Sei marcatori del file esportato, controllati anche con Python/FFmpeg sul Mac, hanno scarto A/V massimo **30,011 ms**, entro la soglia invariata di 33,334 ms. [Misura indipendente](evidence/samsung-synthetic-sync.json).
+- Backup completo di `files` e `shared_prefs` della build di test eseguito prima dell'aggiornamento del recorder. Nessun progetto è stato cancellato o spostato per preparare il telefono.
+
+Video reali, schermate e archivi completi restano in `.qa/evidence/samsung/`, esclusi da Git. I risultati seguenti restano aperti finché non è conservata la rispettiva evidenza dopo l'ultima modifica rilevante.
 
 ## Intervento minimo richiesto a Fabrizio
 
-Collegare il Samsung S26 via USB, mantenerlo sbloccato, attivare Debug USB e autorizzare questo computer sul telefono. Dopo la connessione, installazione, lettura della diagnostica e controlli automatici possono essere eseguiti dall'agente. Per confrontare camera reale e file salvato serviranno brevi riprese di una scena riconoscibile e un riferimento audio/visivo.
+Collegamento USB e autorizzazione sono già completati. Per le prossime riprese occorre soltanto sbloccare il telefono quando richiesto e posizionarlo rispetto a una scena riconoscibile. Il coordinatore gestisce installazione, diagnostica e controlli automatici. Per misurare la ripresa reale servono anche un riferimento audio/visivo visibile e le posizioni verticale/orizzontale.
 
 Non disinstallare l'app personale per aggiornarla. Prima di prove o pulizie su un'installazione già usata, conservare backup completi dei progetti, cronologia e originali. Le prove automatiche usano `Creator · test`, con ID distinto; i test strumentali possono rimuovere questa sola installazione.
 

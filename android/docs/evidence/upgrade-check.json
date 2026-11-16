@@ -1,10 +1,20 @@
 {
-  "result": "PASS",
-  "environment": "API 36 arm64 emulator; signed personal APK installed with adb install -r",
-  "files_compared": 5,
-  "originals_compared": 1,
-  "project_tree_sha256_before": "d9f3520e2875a504677146726f407c942a954bfa4e47c9e4613eedc768b740bf",
-  "project_tree_sha256_after": "d9f3520e2875a504677146726f407c942a954bfa4e47c9e4613eedc768b740bf",
-  "all_project_bytes_unchanged": true,
-  "physical_samsung_test": false
+  "date": "2026-11-16",
+  "environment": "Dedicated API36 arm64 emulator; synthetic source only",
+  "applicationId": "it.panebarco.creator",
+  "previousApkSha256": "da8138d73801339690745cfd0086fe4439b56e02788a52b383f1bbdd9c3cf738",
+  "updatedApkSha256": "3d70b62c265c8f29953a327a82943bca41c67e66d39f2258620096cee9d0138d",
+  "sameSigningCertificate": true,
+  "inPlaceInstall": true,
+  "filesCompared": 9,
+  "allFilesByteIdenticalImmediatelyAfterInstall": true,
+  "historyEntriesPreserved": 3,
+  "redoViaPublicControlAfterColdLaunch": true,
+  "originalSha256UnchangedAfterRedo": true,
+  "sourceImportUsedRealSystemPhotoPicker": true,
+  "releaseExportViaPublicControl": true,
+  "gallerySaveViaPublicControl": true,
+  "backupSaveAndRestoreViaRealDocumentsProvider": true,
+  "restoredAsNewProject": true,
+  "restoredHistoryAndSourcesMatch": true
 }

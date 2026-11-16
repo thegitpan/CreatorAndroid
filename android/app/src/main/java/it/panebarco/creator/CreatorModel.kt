@@ -57,8 +57,8 @@ class CreatorModel(application: Application, private val saved: SavedStateHandle
         mutable.value = mutable.value.copy(project = project, destination = destination)
     }
 
-    private fun perform(context: AppOperation = AppOperation.LIBRARY, operation: suspend () -> Unit) {
-        viewModelScope.launch {
+    private fun perform(context: AppOperation = AppOperation.LIBRARY, onCompleted: (() -> Unit)? = null, operation: suspend () -> Unit) {
+        val job = viewModelScope.launch {
             gate.withLock {
                 mutable.value = mutable.value.copy(busy = true, error = null)
                 try { operation() }
@@ -67,6 +67,7 @@ class CreatorModel(application: Application, private val saved: SavedStateHandle
                 finally { mutable.value = mutable.value.copy(busy = false) }
             }
         }
+        onCompleted?.let { callback -> job.invokeOnCompletion { callback() } }
     }
     private suspend fun lists() = withContext(Dispatchers.IO) {
         val projects = repository.listProjects()
@@ -161,7 +162,7 @@ class CreatorModel(application: Application, private val saved: SavedStateHandle
         mutable.value = mutable.value.copy(message = "$count video importati; gli originali sono nel progetto.")
     }
     suspend fun prepareRecording(projectId: String): File = withContext(Dispatchers.IO) { repository.stageFile(projectId, "mp4", recording = true) }
-    fun finalizeRecording(projectId: String, result: Result<File>) = perform(AppOperation.SAVE_RECORDING) {
+    fun finalizeRecording(projectId: String, result: Result<File>, recordingToken: String? = null) = perform(AppOperation.SAVE_RECORDING, onCompleted = { recordingToken?.let(MediaWorkCoordinator::releaseRecording) }) {
         val file = result.getOrThrow()
         val project = withContext(Dispatchers.IO) { repository.commitSource(projectId, file, MediaProbe.inspect(file), recording = true) }
         if (mutable.value.project?.id == projectId) mutable.value = mutable.value.copy(project = project)

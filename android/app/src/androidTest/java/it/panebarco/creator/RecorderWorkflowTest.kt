@@ -45,11 +45,11 @@ class RecorderWorkflowTest {
             assertEquals(2, before.captureLedger.size)
             assertFalse(before.canUndo)
             val hashes = before.sources.associate { it.id to sha(repository.sourceFile(id, it.id).readBytes()) }
-            click("leave_recorder")
+            leaveRecorder()
             click("back")
             click("record_$id")
             recordSegment { repository.load(id).clips.size == 3 }
-            click("leave_recorder")
+            leaveRecorder()
             val after = repository.load(id)
             assertEquals(3, after.captureLedger.size)
             after.sources.forEach { source ->
@@ -120,9 +120,17 @@ class RecorderWorkflowTest {
         click("record_toggle")
         compose.waitUntil(20_000) { runCatching(saved).getOrDefault(false) }
         idle()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithTag("record_status").fetchSemanticsNodes().singleOrNull()
+                ?.config?.get(androidx.compose.ui.semantics.SemanticsProperties.Text)?.any { it.text.startsWith("Pronto") } == true
+        }
+    }
+    private fun leaveRecorder() {
+        click("leave_recorder")
+        compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("back").assertIsDisplayed(); true }.getOrDefault(false) }
     }
     private fun idle() { compose.waitUntil(15_000) { compose.onAllNodesWithTag("operation_progress").fetchSemanticsNodes().isEmpty() }; compose.waitForIdle() }
-    private fun click(tag: String) { val node = compose.onNodeWithTag(tag); runCatching { node.performScrollTo() }; node.assertIsDisplayed().performClick(); idle() }
+    private fun click(tag: String) { compose.clickVisibleControl(tag, InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density); idle() }
     private fun trackReport(file: File): JSONArray {
         val extractor = MediaExtractor()
         return try {

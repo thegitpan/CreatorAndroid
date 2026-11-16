@@ -1,10 +1,10 @@
 {
   "date": "2026-11-16",
-  "environment": "Android API36 arm64 emulators; JDK17",
   "results": [
     {
       "module": "domain",
       "suite": "JVM",
+      "environment": "JDK17 macOS",
       "tests": 9,
       "failures": 0,
       "errors": 0,
@@ -13,7 +13,8 @@
     {
       "module": "data",
       "suite": "JVM",
-      "tests": 32,
+      "environment": "JDK17 macOS",
+      "tests": 36,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -21,7 +22,8 @@
     {
       "module": "media",
       "suite": "JVM",
-      "tests": 12,
+      "environment": "JDK17 macOS",
+      "tests": 16,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -29,15 +31,8 @@
     {
       "module": "app",
       "suite": "JVM",
-      "tests": 5,
-      "failures": 0,
-      "errors": 0,
-      "skipped": 0
-    },
-    {
-      "module": "media",
-      "suite": "device",
-      "tests": 8,
+      "environment": "JDK17 macOS",
+      "tests": 7,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -45,11 +40,28 @@
     {
       "module": "app",
       "suite": "device",
+      "environment": "Dedicated API36 arm64 emulator",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "media",
+      "suite": "device",
+      "environment": "Samsung SM-S948B API37; test targetSdk36; synthetic media",
       "tests": 10,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     }
   ],
-  "physicalSamsungAcceptance": "pending"
+  "totalDistinctTestCases": 92,
+  "counting": "Repeated runs on Linux CI and API36 media emulator are not counted again.",
+  "physicalSamsungAcceptance": "partial: baseline rear portrait and synthetic media verified; final recorder hardware checks pending",
+  "ci": {
+    "lastVerifiedSourceCommit": "0977242153ce078c0f702e42446b80664edeaa61",
+    "url": "https://github.com/thegitpan/CreatorAndroid/actions/runs/43871516309",
+    "status": "success; final recorder changes awaiting new CI run"
+  }
 }

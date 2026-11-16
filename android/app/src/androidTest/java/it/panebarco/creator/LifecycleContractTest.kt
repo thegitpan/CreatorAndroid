@@ -19,6 +19,27 @@ import java.util.UUID
 class LifecycleContractTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val app get() = instrumentation.targetContext.applicationContext as CreatorApplication
+    @Test fun recordingReservationIsReleasedAfterFailureAndAnAlreadyClearedViewModel() {
+        val store = ViewModelStore()
+        val model = ViewModelProvider(store, object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = CreatorModel(app, SavedStateHandle()) as T
+        })[CreatorModel::class.java]
+        val first = requireNotNull(MediaWorkCoordinator.reserveRecording("failed-qa-take"))
+        var second: String? = null
+        try {
+            model.finalizeRecording("failed-qa-take", Result.failure(java.io.IOException("synthetic storage failure")), first)
+            eventually { MediaWorkCoordinator.recording.value == null }
+            assertNotNull(model.state.value.error)
+            second = requireNotNull(MediaWorkCoordinator.reserveRecording("canceled-qa-take"))
+            store.clear()
+            model.finalizeRecording("canceled-qa-take", Result.failure(java.io.IOException("synthetic canceled callback")), second)
+            eventually { MediaWorkCoordinator.recording.value == null }
+        } finally {
+            store.clear()
+            MediaWorkCoordinator.releaseRecording(first)
+            second?.let(MediaWorkCoordinator::releaseRecording)
+        }
+    }
     @Test fun lateExportUpdatesCannotReplaceANewerJob() = runBlocking {
         val old = ExportJobs.begin("old-qa-project")
         val newer = ExportJobs.begin("new-qa-project")

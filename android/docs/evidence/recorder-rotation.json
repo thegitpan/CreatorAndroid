@@ -1,0 +1,9 @@
+{
+  "evidence": "emulator_layout_and_lifecycle_only",
+  "frontSelectionRetained": true,
+  "segmentCount": 2,
+  "firstSourceDurationUs": 1606000,
+  "firstSourceSha256BeforeAndAfter": "08f0fba102fed3384dc35614f1e09d1acf80b6995cf4cf007dbd1411ba32a4e8",
+  "sourceOrderPreserved": true,
+  "recordingReservationReleased": true
+}

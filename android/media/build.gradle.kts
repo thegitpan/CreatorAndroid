@@ -11,6 +11,7 @@ android {
         buildConfigField("String", "CAMERA_X_VERSION", "\"$cameraXVersion\"")
         buildConfigField("String", "MEDIA3_VERSION", "\"$media3Version\"")
     }
+    testOptions { targetSdk = 36 }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
 }
